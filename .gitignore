@@ -1,0 +1,4 @@
+generated/*
+frontends/cInPy.g
+frontends/cInC.g
+.*swp
