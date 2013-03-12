@@ -8,6 +8,7 @@ frontends/cInC.g: frontends/c.g
 
 generated/cInPyParser.py: frontends/cInPy.g antlr-3.1.3/lib/antlr-3.1.3.jar
 	java -classpath antlr-3.1.3/lib/antlr-3.1.3.jar org.antlr.Tool -fo generated frontends/cInPy.g
+	sed -e '1isymbols = {' -e 's/^\([A-Z_0-9]\+\)=\([0-9]\+\)$$/\2:"\1",/' -e "s/'\(.*\)'=\([0-9]\+\)/\2:'\1',/" -e'$$a-1:"dummy"}' generated/cInPy.tokens >generated/cInPyTokens.py
 
 generated/cInCParser.c: frontends/cInC.g antlr-3.1.3/lib/antlr-3.1.3.jar
 	java -classpath antlr-3.1.3/lib/antlr-3.1.3.jar org.antlr.Tool -fo generated frontends/cInC.g

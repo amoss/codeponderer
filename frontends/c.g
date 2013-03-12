@@ -20,6 +20,11 @@ options {
   output=AST;
 }
 
+tokens {
+  DECL;
+  FUNC;
+}
+
 
 translationUnit : externDecl+
                 ;
@@ -28,11 +33,12 @@ externDecl : functionDecl
            | declaration
            ;
 
-declaration : declSpecs? declarator SEMI
+declaration : declSpecs? declarator initialiser? SEMI
+            -> ^(DECL declarator declSpecs? initialiser?)
             ;
 
 functionDecl : declSpecs? declarator OPENPAR paramList CLOSEPAR /*declList?*/ compoundStmt
-             -> ^(OPENPAR declarator paramList compoundStmt declSpecs?)
+             -> ^(FUNC declarator paramList compoundStmt declSpecs?)
             ;
 
 paramList : paramDecl ( COMMA paramDecl )*
@@ -46,7 +52,11 @@ declSpecs : (storageClass | typeSpecifier | typeQualifier)+
           ;
 
 declarator : IDENT 
-           | STAR IDENT;
+           | IDENT OPENSQ constExpr CLOSESQ
+           | STAR declarator
+           ;
+
+initialiser : EQUALS constExpr ;
 
 storageClass : 'typedef'
              | 'extern'
@@ -103,7 +113,7 @@ compoundStmt : OPENBRA notscope* compoundStmt* notscope* CLOSEBRA
 
 
 
-constExpr : NUM ;
+constExpr : NUM | STR ;
 
 ENUM : 'enum'
              ;
@@ -119,6 +129,9 @@ OPENPAR  : '(' ;
 CLOSEPAR : ')' ;
 OPENBRA  : '{' ;
 CLOSEBRA : '}' ;
+OPENSQ   : '[' ;
+CLOSESQ  : ']' ;
+EQUALS   : '=' ;
 
 VOID     : 'void' ;
 CHAR     : 'char' ;
@@ -135,6 +148,8 @@ STAR  : '*' ;
 SEMI  : ';' ;
 NUM : DIGIT+ ;
 IDENT : ALPHA (ALPHA | DIGIT)* ;
+
+STR : '"' (~'"')* '"' ;
 
 WS : (' ' | '\n' | '\t')+ { $channel = HIDDEN }
    ;
