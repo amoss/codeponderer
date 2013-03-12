@@ -17,7 +17,9 @@ grammar REPLACENAME;      // Overwritten by Makefile
 options {
   backtrack=true;
   language=REPLACELANG;   // Overwritten by Makefile
+  output=AST;
 }
+
 
 translationUnit : externDecl+
                 ;
@@ -26,17 +28,25 @@ externDecl : functionDecl
            | declaration
            ;
 
-declaration : declSpecs? IDENT ';'
+declaration : declSpecs? declarator SEMI
             ;
 
-functionDecl : declSpecs? declarator /*declList?*/ compoundStmt
+functionDecl : declSpecs? declarator OPENPAR paramList CLOSEPAR /*declList?*/ compoundStmt
+             -> ^(OPENPAR declarator paramList compoundStmt declSpecs?)
             ;
+
+paramList : paramDecl ( COMMA paramDecl )*
+          ;
+
+paramDecl : declSpecs declarator 
+          ;
 
 
 declSpecs : (storageClass | typeSpecifier | typeQualifier)+
           ;
 
-declarator : IDENT ;
+declarator : IDENT 
+           | STAR IDENT;
 
 storageClass : 'typedef'
              | 'extern'
@@ -46,15 +56,15 @@ storageClass : 'typedef'
              | 'register'
              ;
 
-typeSpecifier : 'void'
-              | 'char'
-              | 'short'
-              | 'int'
-              | 'long'
-              | 'float'
-              | 'double'
-              | 'signed'
-              | 'unsigned'
+typeSpecifier : VOID
+              | CHAR
+              | SHORT
+              | INT
+              | LONG
+              | FLOAT
+              | DOUBLE
+              | SIGNED
+              | UNSIGNED
               | unionSpecifier
               | structSpecifier
               | enumSpecifier
@@ -79,15 +89,17 @@ enumSpecifier : ENUM IDENT? '{' enumList '}'
               | ENUM IDENT
               ;
 
-enumList : enum ( ',' enum )+
+enumList : enum ( COMMA enum )+
          ;
 
 enum : IDENT
      | IDENT '=' constExpr
      ;
 
-
-compoundStmt : '{' compoundStmt+ '}' ;
+notscope : ~(OPENBRA|CLOSEBRA) ;
+compoundStmt : OPENBRA notscope* compoundStmt* notscope* CLOSEBRA 
+            -> ^(OPENBRA compoundStmt*) 
+             ;
 
 
 
@@ -103,8 +115,26 @@ fragment ALPHA : 'a'..'z'
                | '_'
                ;
 
-NUM : DIGIT+
-    ;
+OPENPAR  : '(' ;
+CLOSEPAR : ')' ;
+OPENBRA  : '{' ;
+CLOSEBRA : '}' ;
 
-IDENT : ALPHA (ALPHA | DIGIT)+
-      ;
+VOID     : 'void' ;
+CHAR     : 'char' ;
+SHORT    : 'short' ;
+INT      : 'int' ;
+LONG     : 'long' ;
+FLOAT    : 'float' ;
+DOUBLE   : 'double' ;
+SIGNED   : 'signed' ;
+UNSIGNED : 'unsigned' ;
+
+COMMA : ',' ;
+STAR  : '*' ;
+SEMI  : ';' ;
+NUM : DIGIT+ ;
+IDENT : ALPHA (ALPHA | DIGIT)* ;
+
+WS : (' ' | '\n' | '\t')+ { $channel = HIDDEN }
+   ;
