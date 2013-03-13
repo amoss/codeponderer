@@ -99,10 +99,10 @@ enumSpecifier : ENUM IDENT? '{' enumList '}'
               | ENUM IDENT
               ;
 
-enumList : enum ( COMMA enum )+
+enumList : enumerator ( COMMA enumerator )+
          ;
 
-enum : IDENT
+enumerator : IDENT
      | IDENT '=' constExpr
      ;
 
@@ -151,5 +151,5 @@ IDENT : ALPHA (ALPHA | DIGIT)* ;
 
 STR : '"' (~'"')* '"' ;
 
-WS : (' ' | '\n' | '\t')+ { $channel = HIDDEN }
+WS : (' ' | '\n' | '\t')+ REPLACEHIDDEN
    ;
