@@ -2,7 +2,7 @@ import sys, antlr3
 sys.path.append('generated')
 import cInPyLexer as L
 import cInPyParser as P
-from cInPyTokens import symbols
+#from cInPyTokens import symbols
 
 def dumpTree(t, indent=0) :
   if t is None :
@@ -31,12 +31,12 @@ def buildModel(tree) :
       for c in tree.children :
         buildModel(c)
       return
-    if nodeType not in symbols :
-      print nodeType, dir(tree)
-      return
-    if symbols[nodeType] == 'DECL' :
+    #if nodeType not in symbols :
+    #  print nodeType, dir(tree)
+    #  return
+    if nodeType == L.DECL :
       print "Decl", tree.children
-    elif symbols[nodeType] == 'FUNC' :
+    elif nodeType == L.FUNC :
       print "Func", tree.children
     else :
       print dir(tree)
