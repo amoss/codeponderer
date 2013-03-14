@@ -3,19 +3,44 @@
 
 char testip[] = "float x;\nstatic int z;\nchar text[64] = \"hello\"; int bob(char x, char *harry) { stuff  { inside } }";
 
-void processTree(pANTLR3_BASE_TREE node, int depth)
+typedef struct
+{
+  char *identifier;
+} Decl;
+
+typedef struct
+{
+  char *identifier;
+} FuncDef;
+
+void *processTree(pANTLR3_BASE_TREE node, int depth)
 {
 int count = node->getChildCount(node); 
-  for(int i=0; i<depth; i++)
-    printf("  ");
+int type  = node->getType(node);
+  switch(type)
+  {
+    case DECL:
+      {
+        Decl *d = malloc(sizeof(Decl));
+        pANTLR3_BASE_TREE id = node->getChild(node,0);
+        d->identifier = id->getText(id)->chars;
+        return d;
+      }
+    case FUNC:
+      break;
+    default:
+      for(int i=0; i<depth; i++)
+        printf("  ");
 
-  printf("Type %u Children %u ", node->getType(node), count);
-  if(node->getText(node)!=NULL)
-    printf("%s\n", node->getText(node)->chars);
-  else
-    printf("empty\n");
-  for(int i=0; i<count; i++)
-    processTree(node->getChild(node,i), depth+1);
+      printf("Type %u Children %u ", node->getType(node), count);
+      if(node->getText(node)!=NULL)
+        printf("%s\n", node->getText(node)->chars);
+      else
+        printf("empty\n");
+      for(int i=0; i<count; i++)
+        processTree(node->getChild(node,i), depth+1);
+      break;
+  }
 }
 
 int main(int argc, char **argv)
