@@ -1,7 +1,7 @@
 #include "cInCLexer.h"
 #include "cInCParser.h"
 
-char testip[] = "float x;";
+char testip[] = "float x;\nstatic int z;\nchar text[64] = \"hello\"; int bob(char x, char *harry) { stuff  { inside } }";
 
 void processTree(pANTLR3_BASE_TREE node, int depth)
 {
@@ -9,7 +9,11 @@ int count = node->getChildCount(node);
   for(int i=0; i<depth; i++)
     printf("  ");
 
-  printf("Type %u Children %u\n", node->getType(node), count);
+  printf("Type %u Children %u ", node->getType(node), count);
+  if(node->getText(node)!=NULL)
+    printf("%s\n", node->getText(node)->chars);
+  else
+    printf("empty\n");
   for(int i=0; i<count; i++)
     processTree(node->getChild(node,i), depth+1);
 }
