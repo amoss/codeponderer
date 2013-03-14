@@ -1,3 +1,10 @@
+all: frontends demos
+
+demos: demos/trivial
+
+demos/trivial: demos/trivial.c generated/cInCParser.c
+	gcc demos/trivial.c generated/cInCLexer.c generated/cInCParser.c -std=c99 -Igenerated -Iantlr-3.1.3/runtime/C/include -Iantlr-3.1.3/runtime/C -o demos/trivial -lantlr3c -Lantlr-3.1.3/runtime/C/installdir/lib 
+
 frontends: generated/cInCParser.c generated/cInPyParser.py
 
 frontends/cInPy.g: frontends/c.g
