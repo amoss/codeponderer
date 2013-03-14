@@ -1,17 +1,29 @@
+extern "C" {
 #include "cInCLexer.h"
 #include "cInCParser.h"
-
+}
+#include<list>
+using namespace std;
 char testip[] = "float x;\nstatic int z;\nchar text[64] = \"hello\"; int bob(char x, char *harry) { stuff  { inside } }";
 
-typedef struct
+class Decl
 {
+public:
   char *identifier;
-} Decl;
+};
 
-typedef struct
+class Func
 {
+public:
   char *identifier;
-} FuncDef;
+};
+
+class TranslationU
+{
+public:
+  list<Decl*> globals;
+  list<Func*> functions;
+};
 
 void *processTree(pANTLR3_BASE_TREE node, int depth)
 {
@@ -21,9 +33,9 @@ int type  = node->getType(node);
   {
     case DECL:
       {
-        Decl *d = malloc(sizeof(Decl));
-        pANTLR3_BASE_TREE id = node->getChild(node,0);
-        d->identifier = id->getText(id)->chars;
+        Decl *d = new Decl;
+        pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
+        d->identifier = (char*)id->getText(id)->chars;
         return d;
       }
     case FUNC:
@@ -38,7 +50,7 @@ int type  = node->getType(node);
       else
         printf("empty\n");
       for(int i=0; i<count; i++)
-        processTree(node->getChild(node,i), depth+1);
+        processTree((pANTLR3_BASE_TREE)node->getChild(node,i), depth+1);
       break;
   }
 }
@@ -51,7 +63,7 @@ pcInCLexer lex;
 pcInCParser parser;
 cInCParser_translationUnit_return retVal;
 
-  ip = antlr3NewAsciiStringInPlaceStream(testip, strlen(testip), NULL);
+  ip = antlr3NewAsciiStringInPlaceStream((uint8_t*)testip, strlen(testip), NULL);
   lex = cInCLexerNew(ip);
   tokens = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lex));
   parser = cInCParserNew(tokens);
