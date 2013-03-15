@@ -4,8 +4,30 @@ extern "C" {
 }
 #include<list>
 #include<string>
+#include<sstream>
 using namespace std;
 char testip[] = "float x;\nstatic int z;\nchar text[64] = \"hello\"; int bob(char x, char *harry) { stuff  { inside } }";
+
+
+// Implements the python str.join function on lists of strings. Awkward to inline without
+// a helper function because the first iteration doesn't start with a separator so it needs
+// to be lifted from the loop.
+string joinStrings(list<string> &strs, char separator)
+{
+stringstream res;
+list<string>::iterator it = strs.begin();
+  if(it!=strs.end())
+  {
+    res << *it;
+    ++it;
+  }
+  while(it!=strs.end())
+  {
+    res << separator << *it;
+    ++it;
+  }
+  return res.str();
+}
 
 class Decl
 {
@@ -13,13 +35,45 @@ public:
   char *identifier;
   bool typeStatic, typeExtern, typeTypedef, typeAuto, typeRegister;
   int  primType;    // -1 for things that are not
+  int stars;
+  int array;
   Decl() :
-    primType(-1)
+    primType(-1), stars(0), array(0)
   {
   }
   string typeStr()
   {
-    return "hello";
+    list<string> prefix;
+    if(typeStatic)
+      prefix.push_back("static");
+    if(typeExtern)
+      prefix.push_back("extern");
+    if(typeTypedef)
+      prefix.push_back("typedef");
+    if(typeAuto)
+      prefix.push_back("auto");
+    if(typeRegister)
+      prefix.push_back("register");
+    switch(primType)
+    {
+      case CHAR:
+        prefix.push_back("char");
+        break;
+      case FLOAT:
+        prefix.push_back("float");
+        break;
+      case INT:
+        prefix.push_back("int");
+        break;
+      case LONG:
+        prefix.push_back("long");
+        break;
+    }
+    stringstream res;
+    res << joinStrings(prefix,' ');
+    if(array>0)
+      res << '[' << array << ']';
+    return res.str();
   }
 };
 
@@ -84,6 +138,19 @@ int count = node->getChildCount(node);
               break;
             case STATIC:
               d->typeStatic = true;
+              break;
+            case OPENSQ:
+              if(i+3 >= count)
+                printf("ERROR: truncated array expression\n");
+              else
+              {
+                pANTLR3_BASE_TREE cexp = (pANTLR3_BASE_TREE)node->getChild(node,i+1);
+                if(cexp->getType(cexp)!=NUM)
+                  printf("ERROR: array bound is unevaluated\n");
+                else
+                  d->array = atoi((char*)cexp->getText(cexp)->chars);
+                i += 2;   // Skip NUM CLOSESQ
+              }
               break;
             default:
               printf("-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
