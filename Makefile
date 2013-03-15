@@ -1,7 +1,7 @@
 all: frontends demos
 
 CINCS=-Ibuild/include -Iantlr-3.1.3/runtime/C 
-CLIBS=-lantlr3c -Lbuild/lib
+CLIBS=-static -lantlr3c -Lbuild/lib
 demos: demos/trivial
 
 demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o cRuntime

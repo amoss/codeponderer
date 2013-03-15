@@ -58,10 +58,10 @@ declarator : IDENT
 
 initialiser : EQUALS constExpr ;
 
-storageClass : 'typedef'
-             | 'extern'
-             | 'static'
-             | 'auto'
+storageClass : TYPEDEF
+             | EXTERN
+             | STATIC
+             | AUTO
              // | 'thread_local'
              | 'register'
              ;
@@ -142,6 +142,10 @@ FLOAT    : 'float' ;
 DOUBLE   : 'double' ;
 SIGNED   : 'signed' ;
 UNSIGNED : 'unsigned' ;
+TYPEDEF  : 'typedef';
+EXTERN   : 'extern';
+STATIC   : 'static';
+AUTO     : 'auto';
 
 COMMA : ',' ;
 STAR  : '*' ;
