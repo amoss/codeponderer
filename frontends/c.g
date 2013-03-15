@@ -23,6 +23,7 @@ options {
 tokens {
   DECL;
   FUNC;
+  PARAM;
 }
 
 
@@ -37,14 +38,12 @@ declaration : declSpecs? declarator initialiser? SEMI
             -> ^(DECL declarator declSpecs? initialiser?)
             ;
 
-functionDecl : declSpecs? declarator OPENPAR paramList CLOSEPAR /*declList?*/ compoundStmt
-             -> ^(FUNC declarator paramList compoundStmt declSpecs?)
+functionDecl : declSpecs? declarator OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
+             -> ^(FUNC declarator paramDecl* compoundStmt declSpecs?)
             ;
 
-paramList : paramDecl ( COMMA paramDecl )*
-          ;
-
 paramDecl : declSpecs declarator 
+          -> ^(PARAM declarator declSpecs)
           ;
 
 

@@ -6,7 +6,7 @@ extern "C" {
 #include<string>
 #include<sstream>
 using namespace std;
-char testip[] = "float x;\nstatic int z;\nchar text[64] = \"hello\"; int bob(char x, char *harry) { stuff  { inside } }";
+char testip[] = "float x;\nstatic int z;\nchar text[64] = \"hello\"; static int bob(char x, char *harry) { stuff  { inside } }";
 
 
 // Implements the python str.join function on lists of strings. Awkward to inline without
@@ -29,6 +29,12 @@ list<string>::iterator it = strs.begin();
   return res.str();
 }
 
+/* Data-storage for both declarations and parameters. 
+   Both contain a type, identifier and specifiers. The only difference is that parameters 
+   cannot contain an initialiser.
+   TODO: Actually they should not be that similar - the parser is too loose and letting 
+         through parameters with storage class specifiers when it should not.
+*/
 class Decl
 {
 public:
@@ -41,6 +47,55 @@ public:
     primType(-1), stars(0), array(0)
   {
   }
+
+  void parseToken(pANTLR3_BASE_TREE node)
+  {
+    int count = node->getChildCount(node);
+    pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
+    identifier = (char*)id->getText(id)->chars;
+    for(int i=1; i<count; i++)
+    {
+      pANTLR3_BASE_TREE tok = (pANTLR3_BASE_TREE)node->getChild(node,i);
+      switch(tok->getType(tok))
+      {
+        case FLOAT:
+        case CHAR:
+        case INT:
+        case LONG:
+          primType = tok->getType(tok);
+          break;
+        case AUTO:
+          typeAuto = true;
+          break;
+        case TYPEDEF:
+          typeTypedef = true;
+          break;
+        case EXTERN:
+          typeExtern = true;
+          break;
+        case STATIC:
+          typeStatic = true;
+          break;
+        case OPENSQ:
+          if(i+3 >= count)
+            printf("ERROR: truncated array expression\n");
+          else
+          {
+            pANTLR3_BASE_TREE cexp = (pANTLR3_BASE_TREE)node->getChild(node,i+1);
+            if(cexp->getType(cexp)!=NUM)
+              printf("ERROR: array bound is unevaluated\n");
+            else
+              array = atoi((char*)cexp->getText(cexp)->chars);
+            i += 2;   // Skip NUM CLOSESQ
+          }
+          break;
+        default:
+          printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
+          break;
+      }
+    }
+  }
+
   string typeStr()
   {
     list<string> prefix;
@@ -81,6 +136,7 @@ class Func
 {
 public:
   char *identifier;
+  list<Decl*> params;
 };
 
 class TranslationU
@@ -114,52 +170,36 @@ int count = node->getChildCount(node);
     case DECL:
       {
         Decl *d = new Decl;
+        d->parseToken(node);
+        globals.push_back(d);
+      }
+      break;
+    case FUNC:
+      {
+        Func *f = new Func;
         pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
-        d->identifier = (char*)id->getText(id)->chars;
+        f->identifier = (char*)id->getText(id)->chars;
         for(int i=1; i<count; i++)
         {
           pANTLR3_BASE_TREE tok = (pANTLR3_BASE_TREE)node->getChild(node,i);
           switch(tok->getType(tok))
           {
-            case FLOAT:
-            case CHAR:
-            case INT:
-            case LONG:
-              d->primType = tok->getType(tok);
-              break;
-            case AUTO:
-              d->typeAuto = true;
-              break;
-            case TYPEDEF:
-              d->typeTypedef = true;
-              break;
-            case EXTERN:
-              d->typeExtern = true;
-              break;
-            case STATIC:
-              d->typeStatic = true;
-              break;
-            case OPENSQ:
-              if(i+3 >= count)
-                printf("ERROR: truncated array expression\n");
-              else
+            case PARAM:
               {
-                pANTLR3_BASE_TREE cexp = (pANTLR3_BASE_TREE)node->getChild(node,i+1);
-                if(cexp->getType(cexp)!=NUM)
-                  printf("ERROR: array bound is unevaluated\n");
-                else
-                  d->array = atoi((char*)cexp->getText(cexp)->chars);
-                i += 2;   // Skip NUM CLOSESQ
+                Decl *p = new Decl;
+                p->parseToken(tok);
+                printf("%llx\n",p);
+                f->params.push_back(p);
               }
               break;
+
             default:
-              printf("-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
+              printf("f-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
               break;
           }
         }
-        globals.push_back(d);
+        functions.push_back(f);
       }
-    case FUNC:
       break;
     default:
       printf("Unknown Type %u Children %u ", type, count);
@@ -175,16 +215,20 @@ int count = node->getChildCount(node);
 // Also upgrading g++ on the knackered old version of Ubuntu that I use can wait until another day.
 #define foreach(T,V,C) for(T::iterator V = C.begin(); V!=C.end(); ++V)
 // This is definitely a bit messy... but it works :)
-#define tmplForeach(Tmpl,ElemT,V,C) { Tmpl<ElemT>::iterator V##It; ElemT V; for(V##It = C.begin(),V=*V##It; V##It!=C.end(); ++V##It,V=*V##It)
-#define tmplEnd }
+#define tmplForeach(Tmpl,ElemT,V,C) { Tmpl<ElemT>::iterator V##It; ElemT V; for(V##It = C.begin(),V=*V##It; V##It!=C.end(); ++V##It,V=*V##It) {
+#define tmplEnd } }
 
 void TranslationU::dump()
 {
   tmplForeach(list,Decl*,decl,globals)  
-    printf("Declation: %s <- %s\n", decl->identifier, decl->typeStr().c_str());
+    printf("Declation: %s is %s\n", decl->identifier, decl->typeStr().c_str());
   tmplEnd
   tmplForeach(list,Func*,f,functions)  
-    printf("Function: %s <- %s\n", f->identifier, "type");
+    printf("Function: %s is ", f->identifier);
+    printf("rettype <- ");
+    tmplForeach(list,Decl*,p,f->params)
+      printf("%s  ", p->typeStr().c_str());
+    tmplEnd
   tmplEnd
 }
 

@@ -5,7 +5,7 @@ CLIBS=-static -lantlr3c -Lbuild/lib
 demos: demos/trivial
 
 demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o cRuntime
-	g++ demos/trivial.cc generated/cInCLexer.o generated/cInCParser.o -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
+	g++ -g demos/trivial.cc generated/cInCLexer.o generated/cInCParser.o -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
 
 frontends: generated/cInCParser.c generated/cInPyParser.py
 
