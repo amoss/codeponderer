@@ -29,6 +29,26 @@ list<string>::iterator it = strs.begin();
   return res.str();
 }
 
+
+// C++11 is scary and both "differently" supported and "differently" able.
+// Also upgrading g++ on the knackered old version of Ubuntu that I use can wait until another day.
+#define foreach(T,V,C) for(T::iterator V = C.begin(); V!=C.end(); ++V)
+// This is definitely a bit messy... but it works :)
+#define tmplForeach(Tmpl,ElemT,V,C) { Tmpl<ElemT>::iterator V##It; ElemT V; for(V##It = C.begin(),V=*V##It; V##It!=C.end(); ++V##It,V=*V##It) {
+#define tmplEnd } }
+
+/* Utility function: extract a slice of the children into a list */
+list<pANTLR3_BASE_TREE> extractChildren(pANTLR3_BASE_TREE node, int lo, int hi)
+{
+list<pANTLR3_BASE_TREE> result;
+int count = node->getChildCount(node);
+  if(hi==-1 || hi >=count)
+    hi = count-1;
+  for(int i=lo; i<=hi; i++)
+    result.push_back( (pANTLR3_BASE_TREE)node->getChild(node,i) );
+  return result;
+}
+
 /* Data-storage for both declarations and parameters. 
    Both contain a type, identifier and specifiers. The only difference is that parameters 
    cannot contain an initialiser.
@@ -48,14 +68,11 @@ public:
   {
   }
 
-  void parseToken(pANTLR3_BASE_TREE node)
+  void parseTokenLs(list<pANTLR3_BASE_TREE>::iterator start,list<pANTLR3_BASE_TREE>::iterator end)
   {
-    int count = node->getChildCount(node);
-    pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
-    identifier = (char*)id->getText(id)->chars;
-    for(int i=1; i<count; i++)
+    while(start!=end)
     {
-      pANTLR3_BASE_TREE tok = (pANTLR3_BASE_TREE)node->getChild(node,i);
+      pANTLR3_BASE_TREE tok = *start;
       switch(tok->getType(tok))
       {
         case FLOAT:
@@ -77,23 +94,37 @@ public:
           typeStatic = true;
           break;
         case OPENSQ:
-          if(i+3 >= count)
+          if(++start==end)
             printf("ERROR: truncated array expression\n");
           else
           {
-            pANTLR3_BASE_TREE cexp = (pANTLR3_BASE_TREE)node->getChild(node,i+1);
-            if(cexp->getType(cexp)!=NUM)
+            tok = *start;
+            if(tok->getType(tok)!=NUM)
               printf("ERROR: array bound is unevaluated\n");
             else
-              array = atoi((char*)cexp->getText(cexp)->chars);
-            i += 2;   // Skip NUM CLOSESQ
+              array = atoi((char*)tok->getText(tok)->chars);
+            // Skip NUM CLOSESQ
+            if(++start==end)
+              printf("ERROR: truncated array expression\n");
+            else 
+              tok = *start;
           }
           break;
         default:
           printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
           break;
       }
+      ++start;
     }
+  }
+
+  void parseToken(pANTLR3_BASE_TREE node)
+  {
+    int count = node->getChildCount(node);
+    pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
+    identifier = (char*)id->getText(id)->chars;
+    list<pANTLR3_BASE_TREE> rest = extractChildren(node,1,-1);
+    parseTokenLs( rest.begin(), rest.end() );
   }
 
   string typeStr()
@@ -136,6 +167,7 @@ class Func
 {
 public:
   char *identifier;
+  Decl retType;
   list<Decl*> params;
 };
 
@@ -179,24 +211,23 @@ int count = node->getChildCount(node);
         Func *f = new Func;
         pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
         f->identifier = (char*)id->getText(id)->chars;
-        for(int i=1; i<count; i++)
+        list<pANTLR3_BASE_TREE> rest = extractChildren(node,1,-1);
+        list<pANTLR3_BASE_TREE>::iterator it=rest.begin();
+        for(; it!=rest.end(); ++it) 
         {
-          pANTLR3_BASE_TREE tok = (pANTLR3_BASE_TREE)node->getChild(node,i);
-          switch(tok->getType(tok))
+          pANTLR3_BASE_TREE tok = *it;
+          if( tok->getType(tok)==PARAM )
           {
-            case PARAM:
-              {
-                Decl *p = new Decl;
-                p->parseToken(tok);
-                printf("%llx\n",p);
-                f->params.push_back(p);
-              }
-              break;
-
-            default:
-              printf("f-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
-              break;
+            Decl *p = new Decl;
+            p->parseToken(tok);
+            f->params.push_back(p);
           }
+          else 
+            break;
+        }
+        if(it!=rest.end())
+        {
+          f->retType.parseTokenLs(it,rest.end());
         }
         functions.push_back(f);
       }
@@ -211,13 +242,6 @@ int count = node->getChildCount(node);
   }
 }
 
-// C++11 is scary and both "differently" supported and "differently" able.
-// Also upgrading g++ on the knackered old version of Ubuntu that I use can wait until another day.
-#define foreach(T,V,C) for(T::iterator V = C.begin(); V!=C.end(); ++V)
-// This is definitely a bit messy... but it works :)
-#define tmplForeach(Tmpl,ElemT,V,C) { Tmpl<ElemT>::iterator V##It; ElemT V; for(V##It = C.begin(),V=*V##It; V##It!=C.end(); ++V##It,V=*V##It) {
-#define tmplEnd } }
-
 void TranslationU::dump()
 {
   tmplForeach(list,Decl*,decl,globals)  
@@ -225,7 +249,7 @@ void TranslationU::dump()
   tmplEnd
   tmplForeach(list,Func*,f,functions)  
     printf("Function: %s is ", f->identifier);
-    printf("rettype <- ");
+    printf("%s <- ", f->retType.typeStr().c_str());
     tmplForeach(list,Decl*,p,f->params)
       printf("%s  ", p->typeStr().c_str());
     tmplEnd
