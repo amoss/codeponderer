@@ -1,19 +1,6 @@
 This repository will contain both a toolkit, and tools using it, that perform static code analysis over C, Java and Bash programs.
 
-Installing the C runtime.
-
-For some reason the C runtime inside the antlr distribution does not contain a configure script. No idea why, as the comments in the other files, docs, and forums online seem to indicate that it should. Sadly the build tools are a little distorted under OSX so something like this was necessary to generate the configure script:
-
- aclocal
- autoconf
- autoheader
- automake
- automake --add-missing
- automake
- autoreconf -ivf
-
-The actual configure needs to setup a reasonable target and architecture:
-
- ./configure --prefix=`pwd`/installdir --enable-64bit
-
-This will be cleaned up and automated in a later version after I try the same on a linux host.
+Installing the C runtime is now automated in the Makefile.
+  OSX(lion): This worked ok, I think suitable versions of the build system are installed by default.
+  Ubuntu(maybe 10.10): Needed to do apt-get -y autoconf libtool
+ 
