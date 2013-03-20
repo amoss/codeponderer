@@ -264,7 +264,10 @@ pcInCLexer lex;
 pcInCParser parser;
 cInCParser_translationUnit_return retVal;
 
-  ip = antlr3NewAsciiStringInPlaceStream((uint8_t*)testip, strlen(testip), NULL);
+  if( argc==1 )
+    ip = antlr3NewAsciiStringInPlaceStream((uint8_t*)testip, strlen(testip), NULL);
+  else
+    ip = antlr3AsciiFileStreamNew((pANTLR3_UINT8)argv[1]);
   lex = cInCLexerNew(ip);
   tokens = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lex));
   parser = cInCParserNew(tokens);
