@@ -1,7 +1,16 @@
 all: frontends demos
 
+SYS=$(shell uname)
 CINCS=-Ibuild/include -Iantlr-3.1.3/runtime/C 
+ifeq ($(SYS),Darwin)
+CLIBS=-lantlr3c -Lbuild/lib
+RUNLIB=build/lib/libantlr3c.la
+endif
+ifeq ($(SYS),Linux)
 CLIBS=-static -lantlr3c -Lbuild/lib
+RUNLIB=build/lib/libantlr3c.so
+endif
+
 demos: demos/trivial
 
 demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o cRuntime
@@ -30,6 +39,6 @@ generated/cInCParser.o: generated/cInCParser.c cRuntime
 antlr-3.1.3/lib/antlr-3.1.3.jar:
 	curl http://www.antlr3.org/download/antlr-3.1.3.tar.gz | tar xz
 
-cRuntime: antlr-3.1.3/lib/antlr-3.1.3.jar build/lib/libantlr3c.so
-build/lib/libantlr3c.so: 
+cRuntime: antlr-3.1.3/lib/antlr-3.1.3.jar $(RUNLIB)
+$(RUNLIB): 
 	bin/buildCRuntime.bash
