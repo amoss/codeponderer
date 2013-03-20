@@ -131,6 +131,8 @@ CLOSEBRA : '}' ;
 OPENSQ   : '[' ;
 CLOSESQ  : ']' ;
 EQUALS   : '=' ;
+fragment OPENCOM  : '/*' ;
+fragment CLOSECOM : '*/' ;
 
 VOID     : 'void' ;
 CHAR     : 'char' ;
@@ -149,10 +151,16 @@ AUTO     : 'auto';
 COMMA : ',' ;
 STAR  : '*' ;
 SEMI  : ';' ;
-NUM : DIGIT+ ;
+NUM : '-' DIGIT+ ('.' DIGIT+)?
+    | DIGIT+ ('.' DIGIT+)?
+    ;
 IDENT : ALPHA (ALPHA | DIGIT)* ;
 
 STR : '"' (~'"')* '"' ;
+CHARLIT : '\'' ~('\'') '\'' ;
 
+COM : '/' '/' (~'\n')* '\n' REPLACEHIDDEN
+    | OPENCOM (options {greedy=false;}: .)* CLOSECOM
+    ;
 WS : (' ' | '\n' | '\t')+ REPLACEHIDDEN
    ;
