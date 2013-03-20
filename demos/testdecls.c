@@ -16,17 +16,17 @@ typedef unsigned char /* check comments inline */ Byte;
 typedef int /*different comment*/ Map(int);
 
 // Function defs
-int bob(char x, char *harry) {
+/*int bob(char x, char *harry) {      DOESNT MATCH
   ignored stuff  { inside matched scopes }
-}
+} */
 
 // Pointers
 int *p1, **p2, ***p3;
 const char *cc;
-char * const CC;
+char * const CC;        // CONST DOESNT MATCH
 
 // Function pointers
-int * (* (*fp1) (int) ) [10];
+int * (* (*fp1) (int) ) [10];     // NOT EVEN CLOSE
 typedef void (*proc)();
 
 typedef struct 

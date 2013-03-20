@@ -31,11 +31,14 @@ translationUnit : externDecl+
                 ;
 
 externDecl : functionDecl
-           | declaration
+           | declaration SEMI
            ;
 
-declaration : declSpecs? declarator initialiser? SEMI
-            -> ^(DECL declarator declSpecs? initialiser?)
+initDecl : declarator initialiser? 
+         ;
+
+declaration : declSpecs? initDecl (COMMA initDecl)*
+            -> ^(DECL declSpecs? initDecl+)
             ;
 
 functionDecl : declSpecs? declarator OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
@@ -50,12 +53,17 @@ paramDecl : declSpecs declarator
 declSpecs : (storageClass | typeSpecifier | typeQualifier)+
           ;
 
-declarator : IDENT 
-           | IDENT OPENSQ constExpr CLOSESQ
+declarator : IDENT declTail?
            | STAR declarator
            ;
+declTail   : OPENSQ constExpr CLOSESQ
+           //| OPENPAR (options {greedy=false;} :.*) CLOSEPAR  // Func proto
+           | OPENPAR (~CLOSEPAR)* CLOSEPAR  // Func proto
+           ;
 
-initialiser : EQUALS constExpr ;
+initialiser : EQUALS (constExpr | arrayInit);
+
+arrayInit : OPENBRA constExpr (COMMA constExpr)* CLOSEBRA ;
 
 storageClass : TYPEDEF
              | EXTERN
@@ -112,7 +120,7 @@ compoundStmt : OPENBRA notscope* compoundStmt* notscope* CLOSEBRA
 
 
 
-constExpr : NUM | STR ;
+constExpr : NUM | STR | CHARLIT;
 
 ENUM : 'enum'
              ;
@@ -131,8 +139,8 @@ CLOSEBRA : '}' ;
 OPENSQ   : '[' ;
 CLOSESQ  : ']' ;
 EQUALS   : '=' ;
-fragment OPENCOM  : '/*' ;
-fragment CLOSECOM : '*/' ;
+OPENCOM  : '/*' ;
+CLOSECOM : '*/' ;
 
 VOID     : 'void' ;
 CHAR     : 'char' ;
@@ -153,6 +161,7 @@ STAR  : '*' ;
 SEMI  : ';' ;
 NUM : '-' DIGIT+ ('.' DIGIT+)?
     | DIGIT+ ('.' DIGIT+)?
+    | '0x' ('0'..'9'|'a'..'f'|'A'..'F')+
     ;
 IDENT : ALPHA (ALPHA | DIGIT)* ;
 
@@ -160,7 +169,7 @@ STR : '"' (~'"')* '"' ;
 CHARLIT : '\'' ~('\'') '\'' ;
 
 COM : '/' '/' (~'\n')* '\n' REPLACEHIDDEN
-    | OPENCOM (options {greedy=false;}: .)* CLOSECOM
+    | OPENCOM (options {greedy=false;}: .)* CLOSECOM REPLACEHIDDEN
     ;
 WS : (' ' | '\n' | '\t')+ REPLACEHIDDEN
    ;

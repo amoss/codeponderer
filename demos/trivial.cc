@@ -111,7 +111,10 @@ public:
           }
           break;
         default:
-          printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
+          if( tok->getText(tok) != NULL )
+            printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
+          else
+            printf("decl-->empty %d\n", tok->getType(tok));
           break;
       }
       ++start;
