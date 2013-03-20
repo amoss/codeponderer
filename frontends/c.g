@@ -35,6 +35,7 @@ externDecl : functionDecl
            ;
 
 initDecl : declarator initialiser? 
+         -> ^(DECL declarator initialiser?)
          ;
 
 declaration : declSpecs? initDecl (COMMA initDecl)*

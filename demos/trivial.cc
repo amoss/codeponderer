@@ -49,6 +49,22 @@ int count = node->getChildCount(node);
   return result;
 }
 
+void dumpTree(pANTLR3_BASE_TREE node, int depth)
+{
+int count = node->getChildCount(node);
+  for(int i=0; i<depth; i++)
+    printf("  ");
+ 
+  printf("Type %u Children %u ", (int)node->getType(node), count);
+  if(node->getText(node)!=NULL)
+    printf("%s\n", node->getText(node)->chars);
+  else
+    printf("empty\n");
+  for(int i=0; i<count; i++)
+    dumpTree((pANTLR3_BASE_TREE)node->getChild(node,i), depth+1);
+}
+
+
 /* Data-storage for both declarations and parameters. 
    Both contain a type, identifier and specifiers. The only difference is that parameters 
    cannot contain an initialiser.
@@ -68,7 +84,7 @@ public:
   {
   }
 
-  void parseTokenLs(list<pANTLR3_BASE_TREE>::iterator start,list<pANTLR3_BASE_TREE>::iterator end)
+  void parseSpecifiers(list<pANTLR3_BASE_TREE>::iterator start,list<pANTLR3_BASE_TREE>::iterator end)
   {
     while(start!=end)
     {
@@ -93,23 +109,7 @@ public:
         case STATIC:
           typeStatic = true;
           break;
-        case OPENSQ:
-          if(++start==end)
-            printf("ERROR: truncated array expression\n");
-          else
-          {
-            tok = *start;
-            if(tok->getType(tok)!=NUM)
-              printf("ERROR: array bound is unevaluated\n");
-            else
-              array = atoi((char*)tok->getText(tok)->chars);
-            // Skip NUM CLOSESQ
-            if(++start==end)
-              printf("ERROR: truncated array expression\n");
-            else 
-              tok = *start;
-          }
-          break;
+        case DECL:  break;  // Skip sub-trees
         default:
           if( tok->getText(tok) != NULL )
             printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
@@ -121,13 +121,64 @@ public:
     }
   }
 
-  void parseToken(pANTLR3_BASE_TREE node)
+  void parseInits(pANTLR3_BASE_TREE subTree)
   {
-    int count = node->getChildCount(node);
-    pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
+    int count = subTree->getChildCount(subTree);
+    pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)subTree->getChild(subTree,0);
     identifier = (char*)id->getText(id)->chars;
-    list<pANTLR3_BASE_TREE> rest = extractChildren(node,1,-1);
-    parseTokenLs( rest.begin(), rest.end() );
+    for(int i=1; i<count; i++)
+    {
+      pANTLR3_BASE_TREE tok = (pANTLR3_BASE_TREE)subTree->getChild(subTree,i);
+      switch(tok->getType(tok))
+      {
+        case OPENSQ:
+          if(i+2 >= count)
+            printf("ERROR: truncated array expression\n");
+          else
+          {
+            tok = (pANTLR3_BASE_TREE)subTree->getChild(subTree,++i);
+            if(tok->getType(tok)!=NUM)
+              printf("ERROR: array bound is unevaluated\n");
+            else
+              array = atoi((char*)tok->getText(tok)->chars);
+            // Skip NUM CLOSESQ
+            if(++i==count)
+              printf("ERROR: truncated array expression\n");
+          }
+          break;
+        default:
+          if( tok->getText(tok) != NULL )
+            printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
+          else
+            printf("decl-->empty %d\n", tok->getType(tok));
+          break;
+      }
+    }
+  }
+
+  /* The subtree for a DECL can contain multiple declarations in a comma-separated
+     list. The initial children are specifiers, these will be cloned into every
+     Decl produced. The results are appended to the list<Decl*> passed in.
+  */
+  static void parse(pANTLR3_BASE_TREE node, list<Decl*> &results)
+  {
+    dumpTree(node,0);
+    list<pANTLR3_BASE_TREE> children = extractChildren(node,0,-1);
+    Decl *first = new Decl;
+    first->parseSpecifiers( children.begin(), children.end() );
+
+    tmplForeach(list,pANTLR3_BASE_TREE,child,children)
+      if( child->getType(child)==DECL )
+      {
+        Decl *d = new Decl;
+        // clone from first
+        d->parseInits(child);
+        results.push_back(d);
+      }
+    tmplEnd
+    //pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
+    //identifier = (char*)id->getText(id)->chars;
+    //parseTokenLs( rest.begin(), rest.end() );
   }
 
   string typeStr()
@@ -204,9 +255,10 @@ int count = node->getChildCount(node);
   {
     case DECL:
       {
-        Decl *d = new Decl;
-        d->parseToken(node);
-        globals.push_back(d);
+        Decl::parse(node,globals);
+        //Decl *d = new Decl;
+        //d->parseToken(node);
+        //globals.push_back(d);
       }
       break;
     case FUNC:
@@ -221,16 +273,16 @@ int count = node->getChildCount(node);
           pANTLR3_BASE_TREE tok = *it;
           if( tok->getType(tok)==PARAM )
           {
-            Decl *p = new Decl;
-            p->parseToken(tok);
-            f->params.push_back(p);
+            //Decl *p = new Decl;
+            //p->parseToken(tok);
+            //f->params.push_back(p);
           }
           else 
             break;
         }
         if(it!=rest.end())
         {
-          f->retType.parseTokenLs(it,rest.end());
+          //f->retType.parseTokenLs(it,rest.end());
         }
         functions.push_back(f);
       }
