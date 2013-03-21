@@ -9,6 +9,8 @@ using namespace std;
 char testip[] = "float x;\nstatic int z;\nchar text[64] = \"hello\"; static int bob(char x, char *harry) { stuff  { inside } }";
 
 
+//////////////////// Heading into some sort of misc.cc pile //////////////////////
+
 // Implements the python str.join function on lists of strings. Awkward to inline without
 // a helper function because the first iteration doesn't start with a separator so it needs
 // to be lifted from the loop.
@@ -64,6 +66,19 @@ int count = node->getChildCount(node);
     dumpTree((pANTLR3_BASE_TREE)node->getChild(node,i), depth+1);
 }
 
+/* Perform rangecheck on getChild before checking the type. Uses -1 as a sentinel 
+   for the type of an out of range child to simplify calling contexts.
+*/
+int getChildType(pANTLR3_BASE_TREE parent, int idx)
+{
+  int count = parent->getChildCount(parent);
+  if( idx<0 || idx>=count )
+    return -1;
+  pANTLR3_BASE_TREE child = (pANTLR3_BASE_TREE)parent->getChild(parent,idx);
+  return child->getType(child);
+}
+
+//////////////////// Moving into an IR collection ///////////////////////////////
 
 /* Data-storage for both declarations and parameters. 
    Both contain a type, identifier and specifiers. The only difference is that parameters 
@@ -137,9 +152,28 @@ public:
   void parseInits(pANTLR3_BASE_TREE subTree)
   {
     int count = subTree->getChildCount(subTree);
-    pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)subTree->getChild(subTree,0);
+    stars = 0;
+    // There is no tree structure for stars in declarators so if a type is a pointer
+    // there will be a stream of STAR tokens prefixing the identifier.
+    for(int i=0; i<count; i++)
+      if(getChildType(subTree,i)!=STAR)
+      {
+        stars = i;
+        break;
+      }
+
+    if( stars >= count ) {
+      printf("Malformed declaration - pointers but no id\n");
+      return;
+    }
+
+    if( getChildType(subTree,stars) != IDENT ) {
+      printf("Malformed declaration - missing IDENT\n");
+      return;
+    }
+    pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)subTree->getChild(subTree,stars);
     identifier = (char*)id->getText(id)->chars;
-    for(int i=1; i<count; i++)
+    for(int i=stars+1; i<count; i++)
     {
       pANTLR3_BASE_TREE tok = (pANTLR3_BASE_TREE)subTree->getChild(subTree,i);
       switch(tok->getType(tok))
@@ -224,6 +258,8 @@ public:
     }
     stringstream res;
     res << joinStrings(prefix,' ');
+    for(int i=0; i<stars; i++)
+      res << '*';
     if(array>0)
       res << '[' << array << ']';
     return res.str();
