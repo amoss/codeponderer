@@ -84,6 +84,19 @@ public:
   {
   }
 
+  void clone(Decl *src) 
+  {
+    identifier   = src->identifier;   // Hairy - do not want this
+    typeStatic   = src->typeStatic;
+    typeExtern   = src->typeExtern;
+    typeTypedef  = src->typeTypedef;
+    typeAuto     = src->typeAuto;
+    typeRegister = src->typeRegister;
+    primType     = src->primType;
+    stars        = src->stars;
+    array        = src->array;
+  }
+
   void parseSpecifiers(list<pANTLR3_BASE_TREE>::iterator start,list<pANTLR3_BASE_TREE>::iterator end)
   {
     while(start!=end)
@@ -171,7 +184,7 @@ public:
       if( child->getType(child)==DECL )
       {
         Decl *d = new Decl;
-        // clone from first
+        d->clone(first);
         d->parseInits(child);
         results.push_back(d);
       }
