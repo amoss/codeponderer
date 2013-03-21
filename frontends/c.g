@@ -10,7 +10,13 @@
    the symbol table.
 
    Parts of this work are based on the C language grammar maintained by Jutta 
-   Degener, and on the ANTLR translation by Terence Parr.
+   Degener, and on the ANTLR translation by Terence Parr, other reference sources
+   include the SGI C Language Reference, which we sadly cannot included in the
+   repository because of copyright restrictions, but which was available at:
+     http://techpubs.sgi.com/library/manuals/0000/007-0701-150/pdf/007-0701-150.pdf
+   Although the C Library Reference guide by Eric Huss has a different focus the
+   first chapter is a good specification of the language:
+     http://www.acm.uiuc.edu/webmonkeys/book/c_guide/
 */
 
 grammar REPLACENAME;      // Overwritten by Makefile
@@ -34,44 +40,55 @@ externDecl : functionDecl
            | declaration SEMI
            ;
 
+// (optionally) Initialised declarators
 initDecl : declarator initialiser? 
          -> ^(DECL declarator initialiser?)
          ;
 
-declaration : declSpecs? initDecl (COMMA initDecl)*
-            -> ^(DECL declSpecs? initDecl+)
+// These three entities (variable declarations, function definition parameters and
+// function prototype parameters) are each variations on defining a type.
+declaration : storageClass? typeSpecifier* typeQualifier? initDecl (COMMA initDecl)*
+            -> ^(DECL storageClass? typeSpecifier* typeQualifier? initDecl+) ;
+paramDecl :               typeSpecifier* typeQualifier? ;
+protoDecl :               typeSpecifier* typeQualifier? ;
+
+// A declarator binds a form and name to a storage and type within a scope.
+// e.g. it specifies a kind of thing (as opposed to the type of a thing).
+// The standard splits this element into two-levels, not sure why... they are
+// left-recursive so follow Parr's transformation onto repeating suffixes
+// This is still far less mesy than trying to resolve IDENTs/types during the parse...
+declarator  : STAR* IDENT declTail*;
+declTail    : OPENPAR (~CLOSEPAR)* CLOSEPAR  // todo: Replace with cases below...
+//           | OPENPAR declarator CLOSEPAR     // Precedence only
+            | OPENSQ constExpr CLOSESQ        // Arrays
+//           | OPENPAR paramList CLOSEPAR      // todo: WTF??
+//           | OPENPAR identList CLOSEPAR      // todo: WTF??
             ;
 
-functionDecl : declSpecs? declarator OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
-             -> ^(FUNC declarator paramDecl* compoundStmt declSpecs?)
+
+
+
+// Todo: check declSpecs replacement
+functionDecl : storageClass? typeSpecifier* typeQualifier? IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
+             -> ^(FUNC IDENT paramDecl* compoundStmt storageClass? typeSpecifier* typeQualifier?)
             ;
 
-paramDecl : declSpecs declarator 
-          -> ^(PARAM declarator declSpecs)
-          ;
+// Replaced above?
+//paramDecl : declSpecs declarator 
+//          -> ^(PARAM declarator declSpecs)
+//          ;
 
-
-declSpecs : (storageClass | typeSpecifier | typeQualifier)+
-          ;
-
-declarator : IDENT declTail?
-           | STAR declarator
-           ;
-declTail   : OPENSQ constExpr CLOSESQ
-           //| OPENPAR (options {greedy=false;} :.*) CLOSEPAR  // Func proto
-           | OPENPAR (~CLOSEPAR)* CLOSEPAR  // Func proto
-           ;
 
 initialiser : EQUALS (constExpr | arrayInit);
 
 arrayInit : OPENBRA constExpr (COMMA constExpr)* CLOSEBRA ;
 
-storageClass : TYPEDEF
-             | EXTERN
-             | STATIC
-             | AUTO
-             // | 'thread_local'
-             | 'register'
+// Type can be prefixed by one of
+storageClass : TYPEDEF      // Not a variable then.
+             | EXTERN       // Pull in at link-time
+             | STATIC       // Lifetime of program
+             | AUTO         // Default storage - lifetime of scope
+             | REGISTER     // Largely deprecated, treated as hint
              ;
 
 typeSpecifier : VOID
@@ -156,6 +173,7 @@ TYPEDEF  : 'typedef';
 EXTERN   : 'extern';
 STATIC   : 'static';
 AUTO     : 'auto';
+REGISTER : 'register';
 
 COMMA : ',' ;
 STAR  : '*' ;

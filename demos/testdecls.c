@@ -16,9 +16,10 @@ typedef unsigned char /* check comments inline */ Byte;
 typedef int /*different comment*/ Map(int);
 
 // Function defs
-/*int bob(char x, char *harry) {      DOESNT MATCH
+void kim() {}
+int bob(char x, char *harry) {      DOESNT MATCH
   ignored stuff  { inside matched scopes }
-} */
+} 
 
 // Pointers
 int *p1, **p2, ***p3;
