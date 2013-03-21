@@ -17,6 +17,8 @@ typedef int /*different comment*/ Map(int);
 
 // Function defs
 void kim() {}
+void kimson() { CRAP }
+int bobette(char y) { }
 int bob(char x, char *harry) {      DOESNT MATCH
   ignored stuff  { inside matched scopes }
 } 

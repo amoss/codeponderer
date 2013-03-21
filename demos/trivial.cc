@@ -173,6 +173,7 @@ public:
     }
     pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)subTree->getChild(subTree,stars);
     identifier = (char*)id->getText(id)->chars;
+    bool firstUnexpected = true;
     for(int i=stars+1; i<count; i++)
     {
       pANTLR3_BASE_TREE tok = (pANTLR3_BASE_TREE)subTree->getChild(subTree,i);
@@ -193,11 +194,15 @@ public:
               printf("ERROR: truncated array expression\n");
           }
           break;
+        case EQUALS:
+          i = count;      // Skip initialiser expressions
+          break;
         default:
-          if( tok->getText(tok) != NULL )
-            printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
-          else
-            printf("decl-->empty %d\n", tok->getType(tok));
+          if(firstUnexpected) {
+            printf("Unexpected child %d in subtree:\n", tok->getType(tok));
+            dumpTree(subTree,0);
+            firstUnexpected = false;
+          }
           break;
       }
     }
@@ -209,7 +214,6 @@ public:
   */
   static void parse(pANTLR3_BASE_TREE node, list<Decl*> &results)
   {
-    dumpTree(node,0);
     list<pANTLR3_BASE_TREE> children = extractChildren(node,0,-1);
     Decl *first = new Decl;
     first->parseSpecifiers( children.begin(), children.end() );
@@ -357,6 +361,7 @@ void TranslationU::dump()
     tmplForeach(list,Decl*,p,f->params)
       printf("%s  ", p->typeStr().c_str());
     tmplEnd
+    printf("\n");
   tmplEnd
 }
 

@@ -36,7 +36,7 @@ tokens {
 translationUnit : externDecl+
                 ;
 
-externDecl : functionDecl
+externDecl : functionDef
            | declaration SEMI
            ;
 
@@ -49,7 +49,8 @@ initDecl : declarator initialiser?
 // function prototype parameters) are each variations on defining a type.
 declaration : storageClass? typeSpecifier* typeQualifier? initDecl (COMMA initDecl)*
             -> ^(DECL storageClass? typeSpecifier* typeQualifier? initDecl+) ;
-paramDecl :               typeSpecifier* typeQualifier? ;
+paramDecl   :               typeSpecifier* STAR* IDENT 
+            -> ^(DECL IDENT STAR* typeSpecifier*) ;
 protoDecl :               typeSpecifier* typeQualifier? ;
 
 // A declarator binds a form and name to a storage and type within a scope.
@@ -69,7 +70,7 @@ declTail    : OPENPAR (~CLOSEPAR)* CLOSEPAR  // todo: Replace with cases below..
 
 
 // Todo: check declSpecs replacement
-functionDecl : storageClass? typeSpecifier* typeQualifier? IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
+functionDef : storageClass? typeSpecifier* typeQualifier? IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
              -> ^(FUNC IDENT paramDecl* compoundStmt storageClass? typeSpecifier* typeQualifier?)
             ;
 
