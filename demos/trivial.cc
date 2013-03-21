@@ -51,6 +51,23 @@ int count = node->getChildCount(node);
   return result;
 }
 
+/* Basically does takeWhile / dropWhile in parallel for functional-style splits 
+   without relying on C11 lambda type stuff (they look nasty) */
+template<typename T>
+void splitList(list<T> src, list<T> &yes, list<T> &no, bool (*predicate)(T) )
+{
+  typename list<T>::iterator elIt = src.begin();
+  for(;elIt!=src.end(); ++elIt)
+  {
+    if( predicate(*elIt) )
+      yes.push_back(*elIt);
+    else 
+      no.push_back(*elIt);
+  }
+}
+
+
+
 void dumpTree(pANTLR3_BASE_TREE node, int depth)
 {
 int count = node->getChildCount(node);
@@ -78,7 +95,21 @@ int getChildType(pANTLR3_BASE_TREE parent, int idx)
   return child->getType(child);
 }
 
+
 //////////////////// Moving into an IR collection ///////////////////////////////
+
+bool isType(pANTLR3_BASE_TREE node)
+{
+  switch(node->getType(node))
+  {
+    case FLOAT: case CHAR: case INT: case LONG: case DOUBLE:
+    case UNSIGNED : case CONST: case STAR:
+      return true;
+    case IDENT:
+      return false;
+  }
+  printf("Unexpected\n");
+}
 
 /* Data-storage for both declarations and parameters. 
    Both contain a type, identifier and specifiers. The only difference is that parameters 
@@ -90,12 +121,12 @@ class Decl
 {
 public:
   char *identifier;
-  bool typeStatic, typeExtern, typeTypedef, typeAuto, typeRegister;
+  bool typeStatic, typeExtern, typeTypedef, typeAuto, typeRegister, typeUnsigned;
   int  primType;    // -1 for things that are not
   int stars;
   int array;
   Decl() :
-    primType(-1), stars(0), array(0)
+    primType(-1), stars(0), array(0), identifier(NULL)
   {
   }
 
@@ -107,6 +138,7 @@ public:
     typeTypedef  = src->typeTypedef;
     typeAuto     = src->typeAuto;
     typeRegister = src->typeRegister;
+    typeUnsigned = src->typeUnsigned;
     primType     = src->primType;
     stars        = src->stars;
     array        = src->array;
@@ -123,7 +155,11 @@ public:
         case CHAR:
         case INT:
         case LONG:
+        case DOUBLE:
           primType = tok->getType(tok);
+          break;
+        case UNSIGNED :
+          typeUnsigned = true;
           break;
         case AUTO:
           typeAuto = true;
@@ -138,6 +174,7 @@ public:
           typeStatic = true;
           break;
         case DECL:  break;  // Skip sub-trees
+        case CONST: break;
         default:
           if( tok->getText(tok) != NULL )
             printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tok->getType(tok));
@@ -156,19 +193,25 @@ public:
     // There is no tree structure for stars in declarators so if a type is a pointer
     // there will be a stream of STAR tokens prefixing the identifier.
     for(int i=0; i<count; i++)
-      if(getChildType(subTree,i)!=STAR)
+    {
+      int childType = getChildType(subTree,i);
+      // todo: Type qualifiers will totally wreck the Decl - process properly!
+      if( childType != STAR && childType != VOLATILE && childType != CONST )
       {
         stars = i;
         break;
       }
+    }
 
     if( stars >= count ) {
       printf("Malformed declaration - pointers but no id\n");
+      dumpTree(subTree,0);
       return;
     }
 
     if( getChildType(subTree,stars) != IDENT ) {
       printf("Malformed declaration - missing IDENT\n");
+      dumpTree(subTree,0);
       return;
     }
     pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)subTree->getChild(subTree,stars);
@@ -196,6 +239,9 @@ public:
           break;
         case EQUALS:
           i = count;      // Skip initialiser expressions
+          break;
+        case OPENPAR:   // Prototype
+          i = count;
           break;
         default:
           if(firstUnexpected) {
@@ -232,6 +278,28 @@ public:
     //parseTokenLs( rest.begin(), rest.end() );
   }
 
+  void parseParam(pANTLR3_BASE_TREE node)
+  {
+    int count = node->getChildCount(node);
+    if( count<2 ) {
+      printf("Illegal parameter in function definition\n");
+      dumpTree(node,0);
+      return;
+    }
+    list<pANTLR3_BASE_TREE> children = extractChildren(node,0,-1);
+    list<pANTLR3_BASE_TREE> types,names;
+    splitList<pANTLR3_BASE_TREE>(children,types,names,isType);
+    parseSpecifiers(types.begin(), types.end());  // children after specifiers
+    pANTLR3_BASE_TREE idTok = *(names.begin());
+    identifier = (char*)idTok->getText(idTok)->chars;
+
+    /*pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
+    identifier = (char*)idTok->getText(idTok)->chars;
+
+    list<pANTLR3_BASE_TREE> children = extractChildren(node,1,-1);
+    parseSpecifiers( children.begin(), children.end() );*/
+  }
+
   string typeStr()
   {
     list<string> prefix;
@@ -245,6 +313,8 @@ public:
       prefix.push_back("auto");
     if(typeRegister)
       prefix.push_back("register");
+    if(typeUnsigned)
+      prefix.push_back("unsigned");
     switch(primType)
     {
       case CHAR:
@@ -326,9 +396,9 @@ int count = node->getChildCount(node);
           pANTLR3_BASE_TREE tok = *it;
           if( tok->getType(tok)==PARAM )
           {
-            //Decl *p = new Decl;
-            //p->parseToken(tok);
-            //f->params.push_back(p);
+            Decl *p = new Decl;
+            p->parseParam(tok);
+            f->params.push_back(p);
           }
           else 
             break;
@@ -339,6 +409,8 @@ int count = node->getChildCount(node);
         }
         functions.push_back(f);
       }
+      break;
+    case SEMI:
       break;
     default:
       printf("Unknown Type %u Children %u ", type, count);
@@ -359,7 +431,8 @@ void TranslationU::dump()
     printf("Function: %s is ", f->identifier);
     printf("%s <- ", f->retType.typeStr().c_str());
     tmplForeach(list,Decl*,p,f->params)
-      printf("%s  ", p->typeStr().c_str());
+      printf("%s ", p->typeStr().c_str());
+      printf("%s  ", p->identifier);
     tmplEnd
     printf("\n");
   tmplEnd

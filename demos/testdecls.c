@@ -26,9 +26,11 @@ int bob(char x, char *harry) {      DOESNT MATCH
 // Pointers
 int *p1, **p2, ***p3;
 const char *cc;
-char * const CC;        // CONST DOESNT MATCH
+char * const CC; 
 
 // Function pointers
+int proto1(char);
+int proto2(char name);
 int * (* (*fp1) (int) ) [10];     // NOT EVEN CLOSE
 typedef void (*proc)();
 

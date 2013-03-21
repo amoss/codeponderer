@@ -47,10 +47,10 @@ initDecl : declarator initialiser?
 
 // These three entities (variable declarations, function definition parameters and
 // function prototype parameters) are each variations on defining a type.
-declaration : storageClass? typeSpecifier* typeQualifier? initDecl (COMMA initDecl)*
+declaration : storageClass? typeQualifier? typeSpecifier* initDecl (COMMA initDecl)*
             -> ^(DECL storageClass? typeSpecifier* typeQualifier? initDecl+) ;
 paramDecl   :               typeSpecifier* STAR* IDENT 
-            -> ^(DECL IDENT STAR* typeSpecifier*) ;
+            -> ^(PARAM typeSpecifier* STAR* IDENT) ;
 protoDecl :               typeSpecifier* typeQualifier? ;
 
 // A declarator binds a form and name to a storage and type within a scope.
@@ -58,7 +58,7 @@ protoDecl :               typeSpecifier* typeQualifier? ;
 // The standard splits this element into two-levels, not sure why... they are
 // left-recursive so follow Parr's transformation onto repeating suffixes
 // This is still far less mesy than trying to resolve IDENTs/types during the parse...
-declarator  : STAR* IDENT declTail*;
+declarator  : (STAR typeQualifier?)* IDENT declTail*;
 declTail    : OPENPAR (~CLOSEPAR)* CLOSEPAR  // todo: Replace with cases below...
 //           | OPENPAR declarator CLOSEPAR     // Precedence only
             | OPENSQ constExpr CLOSESQ        // Arrays
@@ -106,8 +106,8 @@ typeSpecifier : VOID
               | enumSpecifier
               ;
 
-typeQualifier : 'const'
-              | 'volatile'
+typeQualifier : CONST
+              | VOLATILE
               ;
 
 unionSpecifier : 'union' IDENT? '{' structDeclList '}'
@@ -175,6 +175,8 @@ EXTERN   : 'extern';
 STATIC   : 'static';
 AUTO     : 'auto';
 REGISTER : 'register';
+CONST    : 'const';
+VOLATILE : 'volatile';
 
 COMMA : ',' ;
 STAR  : '*' ;
