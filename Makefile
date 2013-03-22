@@ -13,8 +13,8 @@ endif
 
 demos: demos/trivial
 
-demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o cRuntime
-	g++ -g demos/trivial.cc generated/cInCLexer.o generated/cInCParser.o -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
+demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o models/util.o models/c.o cRuntime
+	g++ -g demos/trivial.cc generated/cInCLexer.o generated/cInCParser.o models/util.o models/c.o -I. -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
 
 frontends: generated/cInCParser.c generated/cInPyParser.py
 
@@ -23,6 +23,12 @@ frontends/cInPy.g: frontends/c.g
 
 frontends/cInC.g: frontends/c.g
 	sed -e's/REPLACELANG/C/' -e's/REPLACENAME/cInC/' -e's/REPLACEHIDDEN/{$$channel=HIDDEN;}/' frontends/c.g >frontends/cInC.g
+
+models/c.o: models/c.cc models/c.h
+	g++ -c models/c.cc -I. -Igenerated -Iantlr-3.1.3/runtime/C/include -Iantlr-3.1.3/runtime/C -o models/c.o
+
+models/util.o: models/util.h models/util.cc
+	g++ -c models/util.cc -I. -Igenerated -Iantlr-3.1.3/runtime/C/include -Iantlr-3.1.3/runtime/C -o models/util.o
 
 generated/cInPyParser.py: frontends/cInPy.g antlr-3.1.3/lib/antlr-3.1.3.jar
 	java -classpath antlr-3.1.3/lib/antlr-3.1.3.jar org.antlr.Tool -fo generated frontends/cInPy.g
