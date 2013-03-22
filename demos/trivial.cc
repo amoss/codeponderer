@@ -103,9 +103,9 @@ bool isType(pANTLR3_BASE_TREE node)
   switch(node->getType(node))
   {
     case FLOAT: case CHAR: case INT: case LONG: case DOUBLE:
-    case UNSIGNED : case CONST: case STAR:
+    case UNSIGNED : case CONST:
       return true;
-    case IDENT:
+    case IDENT: case STAR:
       return false;
   }
   printf("Unexpected\n");
@@ -287,11 +287,17 @@ public:
       return;
     }
     list<pANTLR3_BASE_TREE> children = extractChildren(node,0,-1);
-    list<pANTLR3_BASE_TREE> types,names;
-    splitList<pANTLR3_BASE_TREE>(children,types,names,isType);
-    parseSpecifiers(types.begin(), types.end());  // children after specifiers
-    pANTLR3_BASE_TREE idTok = *(names.begin());
-    identifier = (char*)idTok->getText(idTok)->chars;
+    //list<pANTLR3_BASE_TREE> types,names;
+    //splitList<pANTLR3_BASE_TREE>(children,types,names,isType);
+    parseSpecifiers(children.begin(), children.end());  // children after specifiers
+    for(int i=0; i<count; i++)
+      if(getChildType(node,i)==DECL)
+      {
+        parseInits((pANTLR3_BASE_TREE)node->getChild(node,i));
+        break;
+      }
+    //pANTLR3_BASE_TREE idTok = *(names.begin());
+    //identifier = (char*)idTok->getText(idTok)->chars;
 
     /*pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
     identifier = (char*)idTok->getText(idTok)->chars;

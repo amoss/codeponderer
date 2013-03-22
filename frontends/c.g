@@ -50,7 +50,7 @@ initDecl : declarator initialiser?
 declaration : storageClass? typeQualifier? typeSpecifier* initDecl (COMMA initDecl)*
             -> ^(DECL storageClass? typeSpecifier* typeQualifier? initDecl+) ;
 paramDecl   :               typeSpecifier* STAR* IDENT 
-            -> ^(PARAM typeSpecifier* STAR* IDENT) ;
+            -> ^(PARAM typeSpecifier* ^(DECL STAR* IDENT)) ;
 protoDecl :               typeSpecifier* typeQualifier? ;
 
 // A declarator binds a form and name to a storage and type within a scope.
