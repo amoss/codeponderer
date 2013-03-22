@@ -28,10 +28,17 @@ int *p1, **p2, ***p3;
 const char *cc;
 char * const CC; 
 
-// Function pointers
+// Function pointers and protos
 int proto1(char);
 int proto2(char name);
-int * (* (*fp1) (int) ) [10];     // NOT EVEN CLOSE
+//*ptr;
+(int *ptr2b);            // Is this valid?
+//(*ptr2);            // Is this valid?
+// NO nasty(*,*,*);       // Is this valid?
+// NO ugly(,,,);          // ?
+int (*fp1) (int);     // NOT EVEN CLOSE
+int * (* (*fp2) (int) );     // NOT EVEN CLOSE
+int * (* (*fp3) (int) ) [10];     // NOT EVEN CLOSE
 typedef void (*proc)();
 
 typedef struct 

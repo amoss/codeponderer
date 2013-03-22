@@ -47,11 +47,11 @@ initDecl : declarator initialiser?
 
 // These three entities (variable declarations, function definition parameters and
 // function prototype parameters) are each variations on defining a type.
-declaration : storageClass? typeQualifier? typeSpecifier* initDecl (COMMA initDecl)*
-            -> ^(DECL storageClass? typeSpecifier* typeQualifier? initDecl+) ;
-paramDecl   :               typeSpecifier* STAR* IDENT 
-            -> ^(PARAM typeSpecifier* ^(DECL STAR* IDENT)) ;
-protoDecl :               typeSpecifier* typeQualifier? ;
+declaration : storageClass? typeQualifier? typeSpecifier+ initDecl (COMMA initDecl)*
+            -> ^(DECL storageClass? typeSpecifier+ typeQualifier? initDecl+) ;
+paramDecl   :               typeSpecifier+ STAR* IDENT 
+            -> ^(PARAM typeSpecifier+ ^(DECL STAR* IDENT)) ;
+protoDecl :               typeSpecifier+ typeQualifier? ;
 
 // A declarator binds a form and name to a storage and type within a scope.
 // e.g. it specifies a kind of thing (as opposed to the type of a thing).
@@ -59,11 +59,13 @@ protoDecl :               typeSpecifier* typeQualifier? ;
 // left-recursive so follow Parr's transformation onto repeating suffixes
 // This is still far less mesy than trying to resolve IDENTs/types during the parse...
 declarator  : (STAR typeQualifier?)* IDENT declTail*;
-declTail    : OPENPAR (~CLOSEPAR)* CLOSEPAR  // todo: Replace with cases below...
-//           | OPENPAR declarator CLOSEPAR     // Precedence only
+declTail    : OPENPAR declPar CLOSEPAR                      // Fold cases for simplicity
+            //| OPENPAR (~CLOSEPAR)* CLOSEPAR  // todo: Replace with cases below...
             | OPENSQ constExpr CLOSESQ        // Arrays
-//           | OPENPAR paramList CLOSEPAR      // todo: WTF??
-//           | OPENPAR identList CLOSEPAR      // todo: WTF??
+            ;
+declPar     : declarator                   // Precedence only
+            | paramDecl (COMMA paramDecl)* // Prototypes with idents 
+            | protoDecl (COMMA protoDecl)* // Prototypes with no idents
             ;
 
 

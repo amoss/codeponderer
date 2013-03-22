@@ -121,12 +121,13 @@ class Decl
 {
 public:
   char *identifier;
-  bool typeStatic, typeExtern, typeTypedef, typeAuto, typeRegister, typeUnsigned;
+  bool typeStatic, typeExtern, typeTypedef, typeAuto, typeRegister, typeUnsigned, typeFunction;
   int  primType;    // -1 for things that are not
   int stars;
   int array;
   Decl() :
-    primType(-1), stars(0), array(0), identifier(NULL)
+    primType(-1), stars(0), array(0), identifier(NULL), typeStatic(false), typeExtern(false),
+    typeTypedef(false), typeAuto(false), typeRegister(false), typeUnsigned(false), typeFunction(false)
   {
   }
 
@@ -139,6 +140,7 @@ public:
     typeAuto     = src->typeAuto;
     typeRegister = src->typeRegister;
     typeUnsigned = src->typeUnsigned;
+    typeFunction = src->typeFunction;
     primType     = src->primType;
     stars        = src->stars;
     array        = src->array;
@@ -156,6 +158,7 @@ public:
         case INT:
         case LONG:
         case DOUBLE:
+        case VOID:
           primType = tok->getType(tok);
           break;
         case UNSIGNED :
@@ -241,7 +244,11 @@ public:
           i = count;      // Skip initialiser expressions
           break;
         case OPENPAR:   // Prototype
+          // upto CLOSEPAR
+          //      list of DECLs
+          //      do each one
           i = count;
+          typeFunction = true;
           break;
         default:
           if(firstUnexpected) {
@@ -340,6 +347,8 @@ public:
     res << joinStrings(prefix,' ');
     for(int i=0; i<stars; i++)
       res << '*';
+    if(typeFunction)
+      res << "()";
     if(array>0)
       res << '[' << array << ']';
     return res.str();
@@ -409,10 +418,13 @@ int count = node->getChildCount(node);
           else 
             break;
         }
-        if(it!=rest.end())
-        {
-          //f->retType.parseTokenLs(it,rest.end());
+        if(it==rest.end()) {
+          printf("Malformed function definition - no body\n");
+          dumpTree(node,0);
+          return;
         }
+        ++it;
+        f->retType.parseSpecifiers(it,rest.end());
         functions.push_back(f);
       }
       break;
@@ -463,5 +475,6 @@ cInCParser_translationUnit_return retVal;
 
 TranslationU model = TranslationU(retVal.tree);
   model.dump();
+  dumpTree(retVal.tree,0);
 
 }
