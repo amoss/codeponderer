@@ -6,14 +6,14 @@ void partitionList(std::list<pANTLR3_BASE_TREE> src, std::list<pANTLR3_BASE_TREE
 
 Type::Type( ) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
-  isFunction(false), primType(-1), stars(0), array(0)
+  isFunction(false), isRegister(false), primType(-1), stars(0), array(0)
 {
 }
 
 // Just for convenience
 Type::Type( list<pANTLR3_BASE_TREE>::iterator start, list<pANTLR3_BASE_TREE>::iterator end) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
-  isFunction(false), primType(-1), stars(0), array(0)
+  isFunction(false), isRegister(false),primType(-1), stars(0), array(0)
 {
   parse(start,end);
 }
@@ -142,7 +142,17 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
 {
   TokList ptrQualToks, dtorToks, children = extractChildren(subTree,0,-1);
   partitionList(children, ptrQualToks, dtorToks, isPtrQual);
-  
+
+/* This pattern of splitting on a predicate is common enough that I might wrap
+   this up later.
+  printf("parseInit:\n");
+  dumpTree(subTree,1);
+  printf("partitions into:\nPtrQuals > ");
+  printTokList(ptrQualToks);
+  printf("Dtors > ");
+  printTokList(dtorToks);
+*/  
+
   type.stars = 0;
   tmplForeach(list,pANTLR3_BASE_TREE,ptr,ptrQualToks)
     if( ptr->getType(ptr)==STAR )
@@ -162,14 +172,14 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
     return;
   }
 
-  tmplForeach(list, pANTLR3_BASE_TREE, tok, ptrQualToks)
+  tmplForeach(list, pANTLR3_BASE_TREE, tok, dtorToks)
     switch(tok->getType(tok))
     {
       case IDENT:
         identifier = (char*)tok->getText(tok)->chars;
         break;
       case OPENSQ:
-        if(distance(tokIt,ptrQualToks.end()) < 2)
+        if(distance(tokIt,dtorToks.end()) < 2)
           printf("ERROR: truncated array expression\n");
         else
         {

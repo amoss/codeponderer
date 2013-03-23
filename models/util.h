@@ -19,6 +19,7 @@ typedef std::list<pANTLR3_BASE_TREE> TokList;
 std::string joinStrings(std::list<std::string> &strs, char separator);
 TokList extractChildren(pANTLR3_BASE_TREE node, int lo, int hi);
 void dumpTree(pANTLR3_BASE_TREE node, int depth);
+void printTokList(TokList ls);
 
 /* Basically does takeWhile / dropWhile in parallel for functional-style splits 
    without relying on C11 lambda type stuff (they look nasty) */

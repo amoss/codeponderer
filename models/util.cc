@@ -1,13 +1,15 @@
 #include "models/util.h"
+using namespace std;
+
 //////////////////// Heading into some sort of misc.cc pile //////////////////////
 
 // Implements the python str.join function on lists of strings. Awkward to inline without
 // a helper function because the first iteration doesn't start with a separator so it needs
 // to be lifted from the loop.
-std::string joinStrings(std::list<std::string> &strs, char separator)
+string joinStrings(list<string> &strs, char separator)
 {
-std::stringstream res;
-std::list<std::string>::iterator it = strs.begin();
+stringstream res;
+list<string>::iterator it = strs.begin();
   if(it!=strs.end())
   {
     res << *it;
@@ -49,5 +51,21 @@ int count = node->getChildCount(node);
     dumpTree((pANTLR3_BASE_TREE)node->getChild(node,i), depth+1);
 }
 
+
+/* TODO:
+   There are some interesting comments about getText memory leaks on the mailing
+   list. Might want to wrap all of the getText() handling into a single function
+   that returns a string and ensures the C runtime side is freed.
+*/
+void printTokList(TokList ls)
+{
+  tmplForeach(list, pANTLR3_BASE_TREE, tok, ls)
+    printf("%d ", tok->getType(tok));
+    pANTLR3_STRING txt = tok->getText(tok);
+    if(txt!=NULL)
+      printf("%s ", txt->chars);
+  tmplEnd
+  printf("\n");
+}
 
 
