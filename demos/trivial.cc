@@ -89,10 +89,7 @@ int count = node->getChildCount(node);
       break;
     default:
       printf("Unknown Type %u Children %u ", type, count);
-      if(node->getText(node)!=NULL)
-        printf("%s\n", node->getText(node)->chars);
-      else
-        printf("empty\n");
+      dumpTree(node,1);
       break;
   }
 }

@@ -3,7 +3,7 @@
 class Type
 {
 public:
-  bool isStatic, isExtern, isTypedef, isAuto, isRegister, isUnsigned, isFunction;
+  bool isStatic, isExtern, isTypedef, isAuto, isRegister, isUnsigned, isFunction, isConst;
   int  primType;    // Return type for functions
   int stars;
   int array;

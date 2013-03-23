@@ -6,14 +6,14 @@ void partitionList(std::list<pANTLR3_BASE_TREE> src, std::list<pANTLR3_BASE_TREE
 
 Type::Type( ) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
-  isFunction(false), isRegister(false), primType(-1), stars(0), array(0)
+  isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0)
 {
 }
 
 // Just for convenience
 Type::Type( list<pANTLR3_BASE_TREE>::iterator start, list<pANTLR3_BASE_TREE>::iterator end) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
-  isFunction(false), isRegister(false),primType(-1), stars(0), array(0)
+  isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0)
 {
   parse(start,end);
 }
@@ -34,10 +34,9 @@ void Type::parse(TokList::iterator start, TokList::iterator end)
       case TYPEDEF:    isTypedef = true;  break;
       case EXTERN:     isExtern = true;   break;
       case STATIC:     isStatic = true;   break;
+      case CONST:      isConst  = true;   break;
       case DECL: 
         return;        // Type tokens are prior to declarators
-      case CONST: 
-        break;         // Ignore for now
       default:
         if( tok->getText(tok) != NULL )
           printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tokT);
@@ -64,6 +63,8 @@ string Type::str()
     prefix.push_back("register");
   if(isUnsigned)
     prefix.push_back("unsigned");
+  if(isConst)
+    prefix.push_back("const");
   switch(primType)
   {
     case CHAR:
@@ -103,6 +104,7 @@ bool isTypeTok(pANTLR3_BASE_TREE tok)
   {
       case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID:
       case UNSIGNED: case AUTO:   case TYPEDEF: case EXTERN: case STATIC:
+      case VOLATILE: case CONST:    // Part of the basetype if before initdtors
         return true;
       default:
         return false;
@@ -151,7 +153,8 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
   printTokList(ptrQualToks);
   printf("Dtors > ");
   printTokList(dtorToks);
-*/  
+   */
+  
 
   type.stars = 0;
   tmplForeach(list,pANTLR3_BASE_TREE,ptr,ptrQualToks)
