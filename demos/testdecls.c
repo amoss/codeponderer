@@ -31,6 +31,7 @@ char * const CC;
 // Function pointers and protos
 int proto1(char);
 int proto2(char name);
+int proto3(int blah, char name);
 //*ptr;
 (int *ptr2b);            // Is this valid?
 //(*ptr2);            // Is this valid?

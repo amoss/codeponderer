@@ -21,7 +21,7 @@ TokList extractChildren(pANTLR3_BASE_TREE node, int lo, int hi);
 void dumpTree(pANTLR3_BASE_TREE node, int depth);
 void printTokList(TokList ls);
 
-/* Basically does takeWhile / dropWhile in parallel for functional-style splits 
+/* Basically does filter for functional-style splits 
    without relying on C11 lambda type stuff (they look nasty) */
 template<typename T>
 void splitList(std::list<T> src, std::list<T> &yes, std::list<T> &no, bool (*predicate)(T) )
@@ -35,6 +35,18 @@ void splitList(std::list<T> src, std::list<T> &yes, std::list<T> &no, bool (*pre
       no.push_back(*elIt);
   }
 }
+
+template<typename T>
+void takeWhile( typename std::list<T>::iterator &it, typename std::list<T>::iterator end,
+                std::list<T> &target, bool (*predicate)(T) )
+{
+  while( it!=end && predicate(*it) )
+  {
+    target.push_back(*it);
+    ++it;
+  }
+}
+
 
 /* Do a takeWhile into the first list using the predicate, copy the rest into
    the second list */

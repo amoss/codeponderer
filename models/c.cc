@@ -2,18 +2,23 @@
 using namespace std;
 
 template<pANTLR3_BASE_TREE>
-void partitionList(std::list<pANTLR3_BASE_TREE> src, std::list<pANTLR3_BASE_TREE> &yes, std::list<pANTLR3_BASE_TREE> &no, bool (*predicate)(pANTLR3_BASE_TREE) );
+void partitionList(list<pANTLR3_BASE_TREE> src, list<pANTLR3_BASE_TREE> &yes, list<pANTLR3_BASE_TREE> &no, bool (*predicate)(pANTLR3_BASE_TREE) );
+
+template<pANTLR3_BASE_TREE>
+void takeWhile(list<pANTLR3_BASE_TREE>::iterator &it, list<pANTLR3_BASE_TREE>::iterator end, list<pANTLR3_BASE_TREE> &target, bool (*predicate)(pANTLR3_BASE_TREE));
 
 Type::Type( ) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
-  isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0)
+  isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
+  params(NULL), nParams(-1)
 {
 }
 
 // Just for convenience
 Type::Type( list<pANTLR3_BASE_TREE>::iterator start, list<pANTLR3_BASE_TREE>::iterator end) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
-  isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0)
+  isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
+  params(NULL), nParams(-1)
 {
   parse(start,end);
 }
@@ -70,6 +75,9 @@ string Type::str()
     case CHAR:
       prefix.push_back("char");
       break;
+    case DOUBLE:
+      prefix.push_back("double");
+      break;
     case FLOAT:
       prefix.push_back("float");
       break;
@@ -85,7 +93,14 @@ string Type::str()
   for(int i=0; i<stars; i++)
     res << '*';
   if(isFunction)
-    res << "()";
+  {
+    res << "(";
+    list<string> paramTs;
+    for(int i=0; i<nParams; i++)
+      paramTs.push_back( params[i].str() );
+    res << joinStrings(paramTs,',');
+    res << ")";
+  }
   if(array>0)
     res << '[' << array << ']';
   return res.str();
@@ -120,6 +135,11 @@ bool isPtrQual(pANTLR3_BASE_TREE tok)
     default:
       return false;
   }
+}
+
+bool isParam(pANTLR3_BASE_TREE tok)
+{
+  return tok->getType(tok) == PARAM;
 }
 
 /* The subtree for a DECL can contain multiple declarations in a comma-separated
@@ -200,11 +220,22 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
       case EQUALS:
         return;      // Skip initialiser expressions
       case OPENPAR:   // Prototype
-        // upto CLOSEPAR
-        //      list of DECLs
-        //      do each on
+      {
         type.isFunction = true;
-        return;
+        TokList params;
+        takeWhile( ++tokIt, dtorToks.end(), params, isParam);
+        type.params = new Type[ params.size() ];
+        type.nParams = params.size();
+        TokList::iterator p = params.begin();
+        for(int i=0; i<type.nParams; i++)
+        {
+          list<pANTLR3_BASE_TREE> pChildren = extractChildren(*p, 0, -1);
+          type.params[i].parse(pChildren.begin(), pChildren.end());
+        }
+        break;
+      }
+      case CLOSEPAR:
+        break;    // Skip
       default:
         printf("Unexpected child %d in subtree:\n", tok->getType(tok));
         dumpTree(subTree,0);

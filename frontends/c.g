@@ -65,6 +65,7 @@ declTail    : OPENPAR declPar CLOSEPAR                      // Fold cases for si
             ;
 declPar     : declarator                   // Precedence only
             | paramDecl (COMMA paramDecl)* // Prototypes with idents 
+            -> paramDecl+
             | protoDecl (COMMA protoDecl)* // Prototypes with no idents
             ;
 

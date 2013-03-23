@@ -7,6 +7,8 @@ public:
   int  primType;    // Return type for functions
   int stars;
   int array;
+  int nParams;
+  Type *params;
   Type();
   Type( TokList::iterator start, TokList::iterator end);
   void parse(TokList::iterator start, TokList::iterator end);
