@@ -28,7 +28,7 @@ class TranslationU
 {
 public:
   list<Decl*> globals;
-  //list<Func*> functions;
+  list<FuncDef*> functions;
   TranslationU(pANTLR3_BASE_TREE root);
   void processTopLevel(pANTLR3_BASE_TREE node);
   void dump();
@@ -56,35 +56,13 @@ int count = node->getChildCount(node);
     case DECL:
       Decl::parse(node,globals);
       break;
-    /*case FUNC:
+    case FUNC:
       {
-        Func *f = new Func;
-        pANTLR3_BASE_TREE id = (pANTLR3_BASE_TREE)node->getChild(node,0);
-        f->identifier = (char*)id->getText(id)->chars;
-        list<pANTLR3_BASE_TREE> rest = extractChildren(node,1,-1);
-        list<pANTLR3_BASE_TREE>::iterator it=rest.begin();
-        for(; it!=rest.end(); ++it) 
-        {
-          pANTLR3_BASE_TREE tok = *it;
-          if( tok->getType(tok)==PARAM )
-          {
-            Decl *p = new Decl;
-            p->parseParam(tok);
-            f->params.push_back(p);
-          }
-          else 
-            break;
-        }
-        if(it==rest.end()) {
-          printf("Malformed function definition - no body\n");
-          dumpTree(node,0);
-          return;
-        }
-        ++it;
-        f->retType.parseSpecifiers(it,rest.end());
+        FuncDef *f = new FuncDef;
+        f->parse(node);
         functions.push_back(f);
       }
-      break;*/
+      break;
     case SEMI:
       break;
     default:
@@ -99,15 +77,15 @@ void TranslationU::dump()
   tmplForeach(list,Decl*,decl,globals)  
     printf("Declation: %s is %s\n", decl->identifier, decl->type.str().c_str());
   tmplEnd
-  /*tmplForeach(list,Func*,f,functions)  
+  tmplForeach(list,FuncDef*,f,functions)  
     printf("Function: %s is ", f->identifier);
-    printf("%s <- ", f->retType.typeStr().c_str());
-    tmplForeach(list,Decl*,p,f->params)
-      printf("%s ", p->typeStr().c_str());
+    printf("%s <- ", f->retType.str().c_str());
+    tmplForeach(list,Decl*,p,f->args)
+      printf("%s ", p->type.str().c_str());
       printf("%s  ", p->identifier);
     tmplEnd
     printf("\n");
-  tmplEnd*/
+  tmplEnd
 }
 
 int main(int argc, char **argv)

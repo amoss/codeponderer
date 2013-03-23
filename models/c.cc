@@ -267,3 +267,24 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
 
   }
 */
+
+FuncDef::FuncDef() :
+  identifier(NULL)
+{
+}
+
+void FuncDef::parse(pANTLR3_BASE_TREE node)
+{
+pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
+  identifier = (char*)idTok->getText(idTok)->chars;
+pANTLR3_BASE_TREE stmts = (pANTLR3_BASE_TREE)node->getChild(node,1);
+  // Skip compound statement for now
+TokList params;
+TokList rest = extractChildren(node,2,-1);
+TokList::iterator child = rest.begin();
+  takeWhile( child, rest.end(), params, isParam);
+  retType.parse(child, rest.end());
+  tmplForeach( list, pANTLR3_BASE_TREE, p, params)
+    Decl::parse(p, args);
+  tmplEnd
+}

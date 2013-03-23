@@ -74,7 +74,7 @@ declPar     : declarator                   // Precedence only
 
 // Todo: check declSpecs replacement
 functionDef : storageClass? typeSpecifier* typeQualifier? IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
-             -> ^(FUNC IDENT paramDecl* compoundStmt storageClass? typeSpecifier* typeQualifier?)
+             -> ^(FUNC IDENT compoundStmt paramDecl* storageClass? typeSpecifier* typeQualifier?)
             ;
 
 // Replaced above?
