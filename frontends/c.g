@@ -30,6 +30,7 @@ tokens {
   DECL;
   FUNC;
   PARAM;
+  TYPE;
 }
 
 
@@ -45,10 +46,19 @@ initDecl : declarator initialiser?
          -> ^(DECL declarator initialiser?)
          ;
 
+// This is where we account for typedefs. Normally a grammar would use a real symbol
+// table and semantic actions to check on-the-fly if the ident is a declared type.
+// In order to keep this grammar language independent we allow an arbitrary IDENT
+// as a type and defer the validity check until a later pass (thus no complex semantic
+// actions in the grammar).
+typeWrapper : typeSpecifier+ 
+            | IDENT 
+            ;
+
 // These three entities (variable declarations, function definition parameters and
 // function prototype parameters) are each variations on defining a type.
-declaration : storageClass? typeQualifier? typeSpecifier+ initDecl (COMMA initDecl)*
-            -> ^(DECL storageClass? typeSpecifier+ typeQualifier? initDecl+) ;
+declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)*
+            -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+) ;
 paramDecl   :               typeSpecifier+ STAR* IDENT 
             -> ^(PARAM typeSpecifier+ ^(DECL STAR* IDENT)) ;
 protoDecl :               typeSpecifier+ typeQualifier? ;

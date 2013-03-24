@@ -8,6 +8,7 @@ public:
   int stars;
   int array;
   int nParams;
+  char *typedefName;
   Type *params;
   Type();
   Type( TokList::iterator start, TokList::iterator end);

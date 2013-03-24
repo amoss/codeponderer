@@ -10,7 +10,7 @@ void takeWhile(list<pANTLR3_BASE_TREE>::iterator &it, list<pANTLR3_BASE_TREE>::i
 Type::Type( ) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
-  params(NULL), nParams(-1)
+  params(NULL), nParams(-1), typedefName(NULL)
 {
 }
 
@@ -18,7 +18,7 @@ Type::Type( ) :
 Type::Type( list<pANTLR3_BASE_TREE>::iterator start, list<pANTLR3_BASE_TREE>::iterator end) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
-  params(NULL), nParams(-1)
+  params(NULL), nParams(-1), typedefName(NULL)
 {
   parse(start,end);
 }
@@ -87,6 +87,9 @@ string Type::str()
     case LONG:
       prefix.push_back("long");
       break;
+    case -1:
+      prefix.push_back(typedefName);
+      break;
   }
   stringstream res;
   res << joinStrings(prefix,' ');
@@ -153,6 +156,19 @@ void Decl::parse(pANTLR3_BASE_TREE node, list<Decl*> &results)
 
   Type baseType(typeToks.begin(), typeToks.end());    // Each dtor can contain stars or prototypes.
 
+  // If no valid typeSpecifier then consume one IDENT as a typedef
+  if(baseType.primType==-1)
+  {
+    pANTLR3_BASE_TREE custom = *(dtorToks.begin());
+    if( custom->getType(custom) != IDENT )
+      printf("Invalid type specification - no primitive or typedef supplied\n");
+    else
+    {
+      baseType.typedefName = (char*)custom->getText(custom)->chars;
+      dtorToks.pop_front();
+    }
+  }
+
   tmplForeach(list,pANTLR3_BASE_TREE,dtor,dtorToks)
     Decl *d = new Decl(baseType);
     d->parseInitDtor(dtor);
@@ -190,8 +206,8 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
 
   pANTLR3_BASE_TREE idTok = *(dtorToks.begin());
   if( idTok->getType(idTok) != IDENT ) {
-    printf("Malformed declaration - missing IDENT\n");
-    dumpTree(subTree,0);
+    printf("Malformed init-dtor - missing IDENT (%d)\n", idTok->getType(idTok));
+    dumpTree(subTree,1);
     return;
   }
 

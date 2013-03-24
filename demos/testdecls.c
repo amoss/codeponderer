@@ -14,6 +14,8 @@ unsigned int zero=0;
 // Some typedefs
 typedef unsigned char /* check comments inline */ Byte; 
 typedef int /*different comment*/ Map(int);
+Byte b;
+Should Not Parse;
 
 // Function defs
 void kim() {}
