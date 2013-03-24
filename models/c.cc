@@ -211,6 +211,9 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
     return;
   }
 
+  printf("About to do dtors:\n");
+  dumpTree(subTree,1);
+
   tmplForeach(list, pANTLR3_BASE_TREE, tok, dtorToks)
     switch(tok->getType(tok))
     {
@@ -235,6 +238,27 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
         break;
       case EQUALS:
         return;      // Skip initialiser expressions
+      // A parenthesised tail to a declarator
+      case DECLPAR:
+      {
+        TokList decls = extractChildren(tok, 0, -1);
+        tmplForeach(list, pANTLR3_BASE_TREE, decl, decls)
+          int tokT = decl->getType(decl);
+          switch(tokT)
+          {
+            case PARAM:
+              printf("PARAM inside declpar:\n");
+              dumpTree(decl,1);
+              break;
+            // stream of tokens from the declarator rule
+            default:
+              printf("other inside declpar:\n");
+              dumpTree(decl,1);
+              break;
+          }
+        tmplEnd
+        break;
+      }
       case OPENPAR:   // Prototype
       {
         type.isFunction = true;

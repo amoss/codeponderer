@@ -34,6 +34,9 @@ char * const CC;
 int proto1(char);
 int proto2(char name);
 int proto3(int blah, char name);
+int proto4(int *a, int **b);
+int proto5(int *, int **);
+void (*proc1)();
 typedef void (*proc)();
 int reg(void (*callback)());
 

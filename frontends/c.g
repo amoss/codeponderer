@@ -27,10 +27,12 @@ options {
 }
 
 tokens {
+  //BOLLOCKS;   uncomment to break????
   DECL;
   FUNC;
   PARAM;
   TYPE;
+  DECLPAR;
 }
 
 
@@ -59,9 +61,10 @@ typeWrapper : typeSpecifier+
 // function prototype parameters) are each variations on defining a type.
 declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)*
             -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+) ;
-paramDecl   :               typeSpecifier+ STAR* IDENT 
-            -> ^(PARAM typeSpecifier+ ^(DECL STAR* IDENT)) ;
-protoDecl :               typeSpecifier+ typeQualifier? ;
+paramDecl   :               typeWrapper STAR* IDENT 
+            -> ^(PARAM typeWrapper ^(DECL STAR* IDENT)) ;
+protoDecl :               typeWrapper typeQualifier? STAR*
+          -> ^(PARAM typeWrapper typeQualifier STAR*);
 
 // A declarator binds a form and name to a storage and type within a scope.
 // e.g. it specifies a kind of thing (as opposed to the type of a thing).
@@ -70,13 +73,16 @@ protoDecl :               typeSpecifier+ typeQualifier? ;
 // This is still far less mesy than trying to resolve IDENTs/types during the parse...
 declarator  : (STAR typeQualifier?)* IDENT declTail*;
 declTail    : OPENPAR declPar CLOSEPAR                      // Fold cases for simplicity
-            //| OPENPAR (~CLOSEPAR)* CLOSEPAR  // todo: Replace with cases below...
+            -> ^(DECLPAR declPar)
             | OPENSQ constExpr CLOSESQ        // Arrays
             ;
 declPar     : declarator                   // Precedence only
             | paramDecl (COMMA paramDecl)* // Prototypes with idents 
             -> paramDecl+
             | protoDecl (COMMA protoDecl)* // Prototypes with no idents
+            -> protoDecl+
+            | STAR IDENT
+            -> ^(PARAM STAR IDENT)    // Can't use new token, breaks parser !?!
             ;
 
 
