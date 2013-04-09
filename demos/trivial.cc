@@ -54,13 +54,24 @@ int count = node->getChildCount(node);
   switch(type)
   {
     case DECL:
-      Decl::parse(node,globals);
+      try {
+        Decl::parse(node,globals);
+      }
+      catch(BrokenTree bt) {
+        printf("ERROR: %s\n", bt.explain);
+        dumpTree(bt.blame,1);
+      }
       break;
     case FUNC:
+      try
       {
         FuncDef *f = new FuncDef;
         f->parse(node);
         functions.push_back(f);
+      }
+      catch(BrokenTree bt) {
+        printf("ERROR: %s\n", bt.explain);
+        dumpTree(bt.blame,1);
       }
       break;
     case SEMI:

@@ -10,7 +10,7 @@ void takeWhile(list<pANTLR3_BASE_TREE>::iterator &it, list<pANTLR3_BASE_TREE>::i
 Type::Type( ) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
-  params(NULL), nParams(-1), typedefName(NULL)
+  params(NULL), nParams(-1), typedefName(NULL), retType(NULL)
 {
 }
 
@@ -18,7 +18,7 @@ Type::Type( ) :
 Type::Type( list<pANTLR3_BASE_TREE>::iterator start, list<pANTLR3_BASE_TREE>::iterator end) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
-  params(NULL), nParams(-1), typedefName(NULL)
+  params(NULL), nParams(-1), typedefName(NULL), retType(NULL)
 {
   parse(start,end);
 }
@@ -87,16 +87,19 @@ string Type::str()
     case LONG:
       prefix.push_back("long");
       break;
+    case FPTR :
+      prefix.push_back("<fp>");
+      break;
     case -1:
-      prefix.push_back(typedefName);
+      prefix.push_back("NONE");
       break;
   }
   stringstream res;
   res << joinStrings(prefix,' ');
-  for(int i=0; i<stars; i++)
-    res << '*';
   if(isFunction)
   {
+    if(retType!=NULL)
+      res << retType->str();
     res << "(";
     list<string> paramTs;
     for(int i=0; i<nParams; i++)
@@ -104,6 +107,9 @@ string Type::str()
     res << joinStrings(paramTs,',');
     res << ")";
   }
+  else 
+    for(int i=0; i<stars; i++)
+      res << '*';
   if(array>0)
     res << '[' << array << ']';
   return res.str();
@@ -179,53 +185,65 @@ void Decl::parse(pANTLR3_BASE_TREE node, list<Decl*> &results)
 void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
 {
   TokList ptrQualToks, dtorToks, children = extractChildren(subTree,0,-1);
+
+  // Separate the (STAR typeQualifier?)* prefix from the declarator
   partitionList(children, ptrQualToks, dtorToks, isPtrQual);
 
-/* This pattern of splitting on a predicate is common enough that I might wrap
-   this up later.
-  printf("parseInit:\n");
-  dumpTree(subTree,1);
-  printf("partitions into:\nPtrQuals > ");
-  printTokList(ptrQualToks);
-  printf("Dtors > ");
-  printTokList(dtorToks);
-   */
-  
-
-  type.stars = 0;
-  tmplForeach(list,pANTLR3_BASE_TREE,ptr,ptrQualToks)
-    if( ptr->getType(ptr)==STAR )
-      type.stars++;
-  tmplEnd
-
-  if( dtorToks.size()==0 ) {
-    printf("Malformed declaration - pointers but no id\n");
-    dumpTree(subTree,0);
-    return;
-  }
+  // Check the declName first as function-ptr processing is a major difference from
+  // other declarations.
+  if( dtorToks.size()==0 ) 
+    throw BrokenTree(subTree,"Malformed declaration - pointers but no id");
 
   pANTLR3_BASE_TREE idTok = *(dtorToks.begin());
-  if( idTok->getType(idTok) == FPTR )
-    printf("Function pointer found\n");
-  else
-  if( idTok->getType(idTok) != IDENT ) {
-    printf("Malformed init-dtor - missing IDENT (%d)\n", idTok->getType(idTok));
-    dumpTree(subTree,1);
-    return;
+  switch(idTok->getType(idTok))
+  {
+    // Process: ^(FPTR STAR IDENT declPar?)
+    case FPTR:
+    {
+      TokList fpChildren = extractChildren(idTok, 0, -1);
+      if( fpChildren.size()<2 )
+        throw BrokenTree(idTok, "FPTR without enough children");
+      pANTLR3_BASE_TREE id2Tok = *(++fpChildren.begin());
+      if( id2Tok->getType(id2Tok)!=IDENT )
+        throw BrokenTree(idTok, "FPTR did not contain IDENT");
+      identifier = (char *)id2Tok->getText(id2Tok)->chars;
+      type.stars = 1;
+      type.isFunction = true;
+      type.retType = new Type();
+      type.retType->stars = 0;
+      type.retType->primType = type.primType;
+      type.primType = FPTR;
+      tmplForeach(list,pANTLR3_BASE_TREE,ptr,ptrQualToks)
+        if( ptr->getType(ptr)==STAR )
+          type.retType->stars++;
+      tmplEnd
+      printf("About to do dtors:\n");
+      dumpTree(subTree,1);
+      break;
+    }
+
+    // Process: IDENT 
+    case IDENT:
+      identifier = (char*)idTok->getText(idTok)->chars;
+      type.stars = 0;
+      tmplForeach(list,pANTLR3_BASE_TREE,ptr,ptrQualToks)
+        if( ptr->getType(ptr)==STAR )
+          type.stars++;
+      tmplEnd
+      break;
+
+    default :
+      throw BrokenTree(subTree,"Malformed init-dtor - missing declName");
   }
 
-  printf("About to do dtors:\n");
-  dumpTree(subTree,1);
 
-  tmplForeach(list, pANTLR3_BASE_TREE, tok, dtorToks)
+
+
+  for(TokList::iterator tokIt = ++dtorToks.begin(); tokIt!=dtorToks.end(); ++tokIt)
+  {
+    pANTLR3_BASE_TREE tok = *tokIt;
     switch(tok->getType(tok))
     {
-      case FPTR:
-        identifier = "fptr";
-        break;
-      case IDENT:
-        identifier = (char*)tok->getText(tok)->chars;
-        break;
       case OPENSQ:
         if(distance(tokIt,dtorToks.end()) < 2)
           printf("ERROR: truncated array expression\n");
@@ -247,72 +265,66 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
       // A parenthesised tail to a declarator
       case DECLPAR:
       {
-        TokList decls = extractChildren(tok, 0, -1);
-        tmplForeach(list, pANTLR3_BASE_TREE, decl, decls)
-          int tokT = decl->getType(decl);
-          switch(tokT)
-          {
-            case PARAM:
-              printf("PARAM inside declpar:\n");
-              dumpTree(decl,1);
-              break;
-            // stream of tokens from the declarator rule
-            default:
-              printf("other inside declpar:\n");
-              dumpTree(decl,1);
-              break;
-          }
+        TokList parCnts = extractChildren(tok, 0, -1);
+        // Check first (counts as a side-effect) to ease initialisation in array
+        tmplForeach(list, pANTLR3_BASE_TREE, parTok, parCnts)
+          if( parTok->getType(parTok) != PARAM )
+            throw BrokenTree(tok,"Non-PARAM node inside a declTail parenthesized block");
         tmplEnd
-        break;
-      }
-      case OPENPAR:   // Prototype
-      {
+        type.nParams = parCnts.size();
+        type.params = new Type[ type.nParams ];
+        type.paramNames = new char *[ type.nParams ];
+
+        int i=0;
+        tmplForeach(list, pANTLR3_BASE_TREE, parTok, parCnts)
+          type.paramNames[i] =  parseParam(parTok, &type.params[i]);
+          i++;
+          //printf("PARAM inside declpar:\n");
+          //dumpTree(decl,1);
+        tmplEnd
         type.isFunction = true;
-        TokList params;
-        takeWhile( ++tokIt, dtorToks.end(), params, isParam);
-        type.params = new Type[ params.size() ];
-        type.nParams = params.size();
-        TokList::iterator p = params.begin();
-        for(int i=0; i<type.nParams; i++)
-        {
-          list<pANTLR3_BASE_TREE> pChildren = extractChildren(*p, 0, -1);
-          type.params[i].parse(pChildren.begin(), pChildren.end());
-        }
         break;
       }
-      case CLOSEPAR:
-        break;    // Skip
       default:
-        printf("Unexpected child %d in subtree:\n", tok->getType(tok));
-        dumpTree(subTree,0);
-        return;
+        throw BrokenTree(tok, "Unexpected child type in subtree:");
     }
-  tmplEnd
+  }
 }
 
-/*  void parseParam(pANTLR3_BASE_TREE node)
-  {
-    int count = node->getChildCount(node);
-    if( count<2 ) {
-      printf("Illegal parameter in function definition\n");
-      dumpTree(node,0);
-      return;
-    }
-    list<pANTLR3_BASE_TREE> children = extractChildren(node,0,-1);
-    //list<pANTLR3_BASE_TREE> types,names;
-    //splitList<pANTLR3_BASE_TREE>(children,types,names,isType);
-    parseSpecifiers(children.begin(), children.end());  // children after specifiers
-    for(int i=0; i<count; i++)
-      if(getChildType(node,i)==DECL)
-      {
-        parseInits((pANTLR3_BASE_TREE)node->getChild(node,i));
-        break;
-      }
-    //pANTLR3_BASE_TREE idTok = *(names.begin());
-    //identifier = (char*)idTok->getText(idTok)->chars;
-
-  }
+/* Parameters are either type signatures (prototypes), or types + names (prototypes and 
+   definitions). We can represent the type+name combination as a Decl, and use NULL
+   identifiers for the anonymous cases.
 */
+char *parseParam(pANTLR3_BASE_TREE node, Type *target)
+{
+  list<pANTLR3_BASE_TREE> children = extractChildren(node,0,-1);
+  //if( children.size() < 2 )
+  //  throw BrokenTree(node, "Illegal parameter, too few children");
+
+  // Process: typeWrapper typeQualifier?
+  list<pANTLR3_BASE_TREE> typeToks, others;
+  splitList<pANTLR3_BASE_TREE>(children, typeToks, others, isTypeTok);
+  target->parse(typeToks.begin(), typeToks.end());
+
+  // Process: STAR*
+  TokList::iterator walk = others.begin();
+  target->stars = 0;
+  while(walk!=others.end() && (*walk)->getType(*walk)==STAR) {
+    target->stars++;
+    ++walk;
+  }
+
+  // Process: IDENT?
+  if( walk!=others.end() )
+  {
+    pANTLR3_BASE_TREE idTok = *walk;
+    if( idTok->getType(idTok) != IDENT )
+      throw BrokenTree(node, "Non-IDENT following STARs in paramter");
+    return (char*)idTok->getText(idTok);
+  }
+  return NULL;
+}
+
 
 FuncDef::FuncDef() :
   identifier(NULL)

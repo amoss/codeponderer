@@ -62,9 +62,9 @@ typeWrapper : typeSpecifier+
 declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)*
             -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+) ;
 paramDecl   :               typeWrapper STAR* IDENT 
-            -> ^(PARAM typeWrapper ^(DECL STAR* IDENT)) ;
+            -> ^(PARAM typeWrapper STAR* IDENT); 
 protoDecl :               typeWrapper typeQualifier? STAR*
-          -> ^(PARAM typeWrapper typeQualifier STAR*);
+          -> ^(PARAM typeWrapper typeQualifier? STAR*);
 
 // A declarator binds a form and name to a storage and type within a scope.
 // e.g. it specifies a kind of thing (as opposed to the type of a thing).

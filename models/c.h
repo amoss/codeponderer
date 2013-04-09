@@ -1,15 +1,18 @@
+#include <exception>
 #include "models/util.h"
 
 class Type
 {
 public:
   bool isStatic, isExtern, isTypedef, isAuto, isRegister, isUnsigned, isFunction, isConst;
-  int  primType;    // Return type for functions
+  int  primType; 
   int stars;
   int array;
   int nParams;
   char *typedefName;
   Type *params;
+  char **paramNames;
+  Type *retType;
   Type();
   Type( TokList::iterator start, TokList::iterator end);
   void parse(TokList::iterator start, TokList::iterator end);
@@ -27,6 +30,8 @@ public:
   void parseInitDtor(pANTLR3_BASE_TREE subTree);
 };
 
+char *parseParam(pANTLR3_BASE_TREE node, Type *target);
+
 class FuncDef
 {
 public:
@@ -37,3 +42,14 @@ public:
   void parse(pANTLR3_BASE_TREE node);
 };
 
+class BrokenTree : public std::exception
+{
+public:
+  pANTLR3_BASE_TREE blame;
+  const char *explain;
+  BrokenTree(pANTLR3_BASE_TREE node, const char *text)
+    :  blame(node), explain(text)
+  {
+  }
+  const char *what() const throw () { return explain; }
+};

@@ -37,7 +37,7 @@ int proto3(int blah, char name);
 int proto4(int *a, int **b);
 int *proto5(int *, int **);
 void (*proc1)();
-int *(*messy)(int *);
+int **(*messy)(int *);
 int (*nasty(int))();    // Returns a fptr -> int f(int)
 int (*nasty2(int,int))(int*,int(*arg)(int));    // Returns a fptr -> int f(int)
 typedef void (*proc)();
