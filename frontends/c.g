@@ -27,7 +27,7 @@ options {
 }
 
 tokens {
-  //BOLLOCKS;   uncomment to break????
+  BOLLOCKS;
   DECL;
   FUNC;
   PARAM;
