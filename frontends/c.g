@@ -27,12 +27,12 @@ options {
 }
 
 tokens {
-  BOLLOCKS;
   DECL;
   FUNC;
   PARAM;
   TYPE;
   DECLPAR;
+  FPTR;
 }
 
 
@@ -70,10 +70,14 @@ protoDecl :               typeWrapper typeQualifier? STAR*
 // e.g. it specifies a kind of thing (as opposed to the type of a thing).
 // The standard splits this element into two-levels, not sure why... they are
 // left-recursive so follow Parr's transformation onto repeating suffixes
-// This is still far less mesy than trying to resolve IDENTs/types during the parse...
-declarator  : (STAR typeQualifier?)* IDENT declTail*;
-declTail    : OPENPAR declPar CLOSEPAR                      // Fold cases for simplicity
-            -> ^(DECLPAR declPar)
+// This is still far less messy than trying to resolve IDENTs/types during the parse...
+declarator  : (STAR typeQualifier?)* declName declTail*;
+declName    : OPENPAR STAR IDENT (OPENPAR declPar CLOSEPAR)? CLOSEPAR
+            -> ^(FPTR STAR IDENT declPar?)
+            | IDENT
+            ;
+declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for simplicity
+            -> ^(DECLPAR declPar?)
             | OPENSQ constExpr CLOSESQ        // Arrays
             ;
 declPar     : declarator                   // Precedence only
@@ -81,8 +85,6 @@ declPar     : declarator                   // Precedence only
             -> paramDecl+
             | protoDecl (COMMA protoDecl)* // Prototypes with no idents
             -> protoDecl+
-            | STAR IDENT
-            -> ^(PARAM STAR IDENT)    // Can't use new token, breaks parser !?!
             ;
 
 

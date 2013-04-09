@@ -205,6 +205,9 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
   }
 
   pANTLR3_BASE_TREE idTok = *(dtorToks.begin());
+  if( idTok->getType(idTok) == FPTR )
+    printf("Function pointer found\n");
+  else
   if( idTok->getType(idTok) != IDENT ) {
     printf("Malformed init-dtor - missing IDENT (%d)\n", idTok->getType(idTok));
     dumpTree(subTree,1);
@@ -217,6 +220,9 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
   tmplForeach(list, pANTLR3_BASE_TREE, tok, dtorToks)
     switch(tok->getType(tok))
     {
+      case FPTR:
+        identifier = "fptr";
+        break;
       case IDENT:
         identifier = (char*)tok->getText(tok)->chars;
         break;
