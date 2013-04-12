@@ -41,6 +41,9 @@ translationUnit : externDecl+
 
 externDecl : functionDef
            | declaration SEMI
+           | HASHINCLUDE
+           | HASHDEFINE
+           | HASHUNDEF
            ;
 
 // (optionally) Initialised declarators
@@ -208,11 +211,60 @@ NUM : '-' DIGIT+ ('.' DIGIT+)?
     ;
 IDENT : ALPHA (ALPHA | DIGIT)* ;
 
-STR : '"' (~'"')* '"' ;
+STR : '"' ('\\"' | ~'"')* '"' ;
 CHARLIT : '\'' ~('\'') '\'' ;
+
+// Preprocess commands will be awkward because of the interaction with whitespace
+HASHINCLUDE: '#include' (~'\n')* '\n' ;
+HASHDEFINE: '#define' (~'\n')* '\n' ;
+HASHUNDEF: '#undef' (~'\n')* '\n' ;
 
 COM : '/' '/' (~'\n')* '\n' REPLACEHIDDEN
     | OPENCOM (options {greedy=false;}: .)* CLOSECOM REPLACEHIDDEN
     ;
-WS : (' ' | '\n' | '\t')+ REPLACEHIDDEN
+WS : (' ' | '\\\n' | '\n' | '\t')+ REPLACEHIDDEN
    ;
+
+ELLIPSIS : '...';
+ASSRIGHT : '>>=';
+ASSLEFT  : '<<=';
+ASSPLUS  : '+='	;
+ASSMINUS : '-=' ;
+ASSMUL   : '*=' ;
+ASSDIV   : '/='	;
+ASSMOD   : '%='	;
+ASSAND   : '&='	;
+ASSXOR   : '^=' ;
+ASSOR    : '|='	;
+
+OPRIGHT  : '>>' ;
+OPLEFT   : '<<' ;
+OPINC    : '++' ;
+OPDEC    : '--' ;
+
+FOLLOW   : '->' ;
+SELECT   : '.'  ;
+
+OPLOGNOT : '!'  ;
+OPLOGAND : '&&' ;
+OPLOGOR  : '||' ;
+OPLESSEQ : '<=' ;
+OPGREATEREQ : '>=' ;
+OPLOGLESS : '<' ;
+OPLOGGREATER : '>' ;
+OPEQUALS : '==' ;
+OPNOTEQ  : '!=' ;
+
+OPPLUS   : '+' ;
+OPMINUS  : '-' ;
+// OPMUL    : '*' ;           Need to fix precedence
+OPDIV    : '/' ;
+OPMOD    : '%' ;
+
+AMP      : '&' ;
+QUESTION : '?' ;
+COLON    : ':' ;
+// ASSIGN   : '=' ;           Need to fix precedence
+OPBINOR  : '|' ;
+OPBINNOT : '~' ;
+OPBINXOR : '^' ;

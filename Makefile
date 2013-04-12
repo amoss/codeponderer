@@ -1,4 +1,4 @@
-all: frontends demos
+all: frontends demos testcases
 
 SYS=$(shell uname)
 CINCS=-Ibuild/include -Iantlr-3.1.3/runtime/C 
@@ -50,6 +50,10 @@ antlr-3.1.3/lib/antlr-3.1.3.jar:
 cRuntime: antlr-3.1.3/lib/antlr-3.1.3.jar $(RUNLIB)
 $(RUNLIB): 
 	bin/buildCRuntime.bash
+
+testcases: testcases/gawk-4.0.2/array.c
+testcases/gawk-4.0.2/array.c:
+	curl ftp://ftp.gnu.org/gnu/gawk/gawk-4.0.2.tar.gz | tar xz -C testcases
 
 clean:
 	rm generated/*
