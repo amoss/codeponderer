@@ -1,6 +1,8 @@
 #include "models/util.h"
 using namespace std;
 
+extern pANTLR3_UINT8   cInCParserTokenNames[];
+
 //////////////////// Heading into some sort of misc.cc pile //////////////////////
 
 // Implements the python str.join function on lists of strings. Awkward to inline without
@@ -42,7 +44,8 @@ int count = node->getChildCount(node);
   for(int i=0; i<depth; i++)
     printf("  ");
  
-  printf("Type %u Children %u ", (int)node->getType(node), count);
+  int t = (int)node->getType(node); 
+  printf("Type %u %s Children %u ", t, cInCParserTokenNames[t], count);
   if(node->getText(node)!=NULL)
     printf("%s\n", node->getText(node)->chars);
   else

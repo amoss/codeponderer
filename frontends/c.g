@@ -64,8 +64,8 @@ typeWrapper : typeSpecifier+
 // function prototype parameters) are each variations on defining a type.
 declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)*
             -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+) ;
-paramDecl   :               typeWrapper STAR* IDENT 
-            -> ^(PARAM typeWrapper STAR* IDENT); 
+paramDecl   :      typeQualifier? typeWrapper STAR* IDENT 
+            -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT); 
 protoDecl :               typeWrapper typeQualifier? STAR*
           -> ^(PARAM typeWrapper typeQualifier? STAR*);
 
@@ -83,19 +83,19 @@ declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for s
             -> ^(DECLPAR declPar?)
             | OPENSQ constExpr CLOSESQ        // Arrays
             ;
-declPar     : declarator                   // Precedence only
-            | paramDecl (COMMA paramDecl)* // Prototypes with idents 
+declPar     : paramDecl (COMMA paramDecl)* // Prototypes with idents 
             -> paramDecl+
             | protoDecl (COMMA protoDecl)* // Prototypes with no idents
             -> protoDecl+
+            | declarator                   // Precedence only 
             ;
 
 
 
 
 // Todo: check declSpecs replacement
-functionDef : storageClass? typeSpecifier* typeQualifier? IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
-             -> ^(FUNC IDENT compoundStmt paramDecl* storageClass? typeSpecifier* typeQualifier?)
+functionDef : storageClass? typeWrapper typeQualifier? IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
+             -> ^(FUNC IDENT compoundStmt paramDecl* storageClass? typeWrapper typeQualifier?)
             ;
 
 // Replaced above?
