@@ -50,7 +50,9 @@ antlr-3.1.3/lib/antlr-3.1.3.jar:
 $(RUNLIB): antlr-3.1.3/lib/antlr-3.1.3.jar
 	bin/buildCRuntime.bash
 
-testcases: testcases/gawk-4.0.2/array.c
+testcases: testcases/pp-gawk/array.i
+testcases/pp-gawk/array.i: testcases/gawk-4.0.2/array.c 
+	bin/buildPPgawk.bash
 testcases/gawk-4.0.2/array.c:
 	curl ftp://ftp.gnu.org/gnu/gawk/gawk-4.0.2.tar.gz | tar xz -C testcases
 
