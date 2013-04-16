@@ -45,7 +45,7 @@ int count = node->getChildCount(node);
     printf("  ");
  
   int t = (int)node->getType(node); 
-  printf("Type %u %s Children %u ", t, cInCParserTokenNames[t], count);
+  printf("%s %lx Children %u ", cInCParserTokenNames[t], node, count);
   if(node->getText(node)!=NULL)
     printf("%s\n", node->getText(node)->chars);
   else
@@ -63,10 +63,10 @@ int count = node->getChildCount(node);
 void printTokList(TokList ls)
 {
   tmplForeach(list, pANTLR3_BASE_TREE, tok, ls)
-    printf("%d ", tok->getType(tok));
+    printf("%s ", cInCParserTokenNames[tok->getType(tok)]);
     pANTLR3_STRING txt = tok->getText(tok);
     if(txt!=NULL)
-      printf("%s ", txt->chars);
+      printf("(%s) ", txt->chars);
   tmplEnd
   printf("\n");
 }

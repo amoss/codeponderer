@@ -42,6 +42,10 @@ void Type::parse(TokList::iterator start, TokList::iterator end)
       case CONST:      isConst  = true;   break;
       case DECL: 
         return;        // Type tokens are prior to declarators
+      case IDENT:
+        primType = TYPEDEF;
+        typedefName = (char*)tok->getText(tok)->chars;
+        break;
       default:
         if( tok->getText(tok) != NULL )
           printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tokT);
@@ -89,6 +93,9 @@ string Type::str()
       break;
     case FPTR :
       prefix.push_back("<fp>");
+      break;
+    case TYPEDEF :
+      prefix.push_back(typedefName);    // An instance of a typedef'd name, not a typedef declaration
       break;
     case -1:
       prefix.push_back("NONE");
@@ -151,6 +158,11 @@ bool isParam(pANTLR3_BASE_TREE tok)
   return tok->getType(tok) == PARAM;
 }
 
+bool isNotDecl(pANTLR3_BASE_TREE tok)
+{
+  return tok->getType(tok) != DECL;
+}
+
 /* The subtree for a DECL can contain multiple declarations in a comma-separated
    list. The initial children specify the type, these will be cloned into every
    Decl produced. The results are appended to the list<Decl*> passed in.
@@ -158,22 +170,33 @@ bool isParam(pANTLR3_BASE_TREE tok)
 void Decl::parse(pANTLR3_BASE_TREE node, list<Decl*> &results)
 {
   TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
-  partitionList(children, typeToks, dtorToks, isTypeTok);
+  //partitionList(children, typeToks, dtorToks, isTypeTok);
+  partitionList(children, typeToks, dtorToks, isNotDecl);
 
+// This is where the identifier/typename ambiguity would bite us, but the symbol name IDENTS are
+// wrapped inside DECL nodes (one for each dtor in the declaration). 
   Type baseType(typeToks.begin(), typeToks.end());    // Each dtor can contain stars or prototypes.
 
-  // If no valid typeSpecifier then consume one IDENT as a typedef
+  /*printf("typeToks: ");
+  printTokList(typeToks);
+  printf("dtorToks: ");
+  printTokList(dtorToks);*/
+
+  // If no valid typeSpecifier then expect an IDENT inside the type part.
+  /*  Moved into Type::parse
+      means that all IDENTS in the type block will be treated as typedef'd names
   if(baseType.primType==-1)
   {
-    pANTLR3_BASE_TREE custom = *(dtorToks.begin());
-    if( custom->getType(custom) != IDENT )
+    tmplForeach(list, pANTLR3_BASE_TREE, tok, typeToks)
+      if( tok->getType(tok)==IDENT )
+      {
+        baseType.typedefName = (char*)tok->getText(tok)->chars;
+        baseType.primType = TYPEDEF;
+      }
+    tmplEnd
+    if( baseType.typedefName == NULL)
       printf("Invalid type specification - no primitive or typedef supplied\n");
-    else
-    {
-      baseType.typedefName = (char*)custom->getText(custom)->chars;
-      dtorToks.pop_front();
-    }
-  }
+  }*/
 
   tmplForeach(list,pANTLR3_BASE_TREE,dtor,dtorToks)
     Decl *d = new Decl(baseType);
@@ -343,6 +366,8 @@ TokList::iterator child = rest.begin();
   takeWhile( child, rest.end(), params, isParam);
   retType.parse(child, rest.end());
   tmplForeach( list, pANTLR3_BASE_TREE, p, params)
+    printf("Trying to do param:");
+    dumpTree(p,1);
     Decl::parse(p, args);
   tmplEnd
 }
