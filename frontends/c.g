@@ -233,7 +233,7 @@ IDENT : ALPHA (ALPHA | DIGIT)* ;
 STR : '"' ('\\"' | ~'"')* '"' ;
 CHARLIT : '\'' (~('\'') | ESC) '\'' ;
 
-fragment ESC : '\\' ('r' | 't' | 'n' | '\'' | '\\' | DIGIT+) ;
+fragment ESC : '\\' ('a' | 'b' | 'v' | 'f' | 'r' | 't' | 'n' | '\'' | '\\' | DIGIT+) ;
 
 // Preprocess commands will be awkward because of the interaction with whitespace
 PREPRO: '#'  (' '|'\t')* ('include' | 'define' | 'undef' | 'if' | 'endif' | 'else' | 'elif' | 'error' 
