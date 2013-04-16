@@ -4,3 +4,42 @@ Installing the C runtime is now automated in the Makefile.
   OSX(lion): This worked ok, I think suitable versions of the build system are installed by default.
   Ubuntu(maybe 10.10): Needed to do apt-get -y autoconf libtool
  
+Testcase status:
+  testcases/gawk-4.0.2/array.c  Lexs Parses
+  testcases/gawk-4.0.2/awkgram.c Lex errors
+    This requires macro expansion to generate syntactically valid code, it's bison output.
+  testcases/gawk-4.0.2/builtin.c Lex errors
+    This fails silently on line 47 because of the escaped newline.
+  testcases/gawk-4.0.2/command.c Lex error
+    Looks like the ... in the arguments on line 84.
+  testcases/gawk-4.0.2/debug.c Lex error
+    Need to put structs in the grammar, line 69.
+  testcases/gawk-4.0.2/dfa.c Lex error
+    Need an inline keyword.
+  testcases/gawk-4.0.2/eval.c Lex error 
+    Problem with enum.
+  testcases/gawk-4.0.2/eval_d.c Lexs Parses
+  testcases/gawk-4.0.2/eval_p.c Lexs Parses
+  testcases/gawk-4.0.2/ext.c Lex error
+    Function pointer as function argument (line 114).
+  testcases/gawk-4.0.2/field.c Lex error
+    Looks like a macro expansion on line 118.
+  testcases/gawk-4.0.2/floatcomp.c Lex error
+    Fails silently, looks like the escaped newline on line 44.
+  testcases/gawk-4.0.2/gawkmisc.c
+  testcases/gawk-4.0.2/getopt1.c
+  testcases/gawk-4.0.2/getopt.c
+  testcases/gawk-4.0.2/io.c
+  testcases/gawk-4.0.2/main.c
+  testcases/gawk-4.0.2/msg.c
+  testcases/gawk-4.0.2/node.c
+  testcases/gawk-4.0.2/profile.c
+  testcases/gawk-4.0.2/profile_p.c
+  testcases/gawk-4.0.2/random.c
+  testcases/gawk-4.0.2/re.c
+  testcases/gawk-4.0.2/regcomp.c
+  testcases/gawk-4.0.2/regex.c
+  testcases/gawk-4.0.2/regexec.c
+  testcases/gawk-4.0.2/regex_internal.c
+  testcases/gawk-4.0.2/replace.c
+  testcases/gawk-4.0.2/version.c

@@ -41,12 +41,7 @@ translationUnit : externDecl+
 
 externDecl : functionDef
            | declaration SEMI
-           | HASHINCLUDE
-           | HASHDEFINE
-           | HASHUNDEF
-           | HASHIF
-           | HASHELSE
-           | HASHENDIF
+           | PREPRO
            ;
 
 // (optionally) Initialised declarators
@@ -217,15 +212,21 @@ IDENT : ALPHA (ALPHA | DIGIT)* ;
 STR : '"' ('\\"' | ~'"')* '"' ;
 CHARLIT : '\'' (~('\'') | ESC) '\'' ;
 
-fragment ESC : '\\' ('r' | 't' | 'n' | DIGIT+) ;
+fragment ESC : '\\' ('r' | 't' | 'n' | '\'' | '\\' | DIGIT+) ;
 
 // Preprocess commands will be awkward because of the interaction with whitespace
-HASHINCLUDE: '#include' (~'\n')* '\n' ;
-HASHDEFINE: '#define' (~'\n')* '\n' ;
-HASHUNDEF: '#undef' (~'\n')* '\n' ;
-HASHIF: '#if' (~'\n')* '\n' ;
-HASHENDIF: '#endif' (~'\n')* '\n' ;
-HASHELSE: '#else' (~'\n')* '\n' ;
+PREPRO: '#'  (' '|'\t')* ('include' | 'define' | 'undef' | 'if' | 'endif' | 'else' | 'elif' | 'error' 
+              | 'pragma' | 'line') (~'\n')* '\n' ;
+//HASHINCLUDE: '#' (' '|'\t')* 'include' (~'\n')* '\n' ;
+//HASHDEFINE: '#' (' '|'\t')* 'define' (~'\n')* '\n' ;
+//HASHUNDEF: '#' (' '|'\t')* 'undef' (~'\n')* '\n' ;
+//HASHIF: '#' (' '|'\t')* 'if' (~'\n')* '\n' ;
+//HASHENDIF: '#' (' '|'\t')* 'endif' (~'\n')* '\n' ;
+//HASHELSE: '#' (' '|'\t')* 'else' (~'\n')* '\n' ;
+//HASHELIF: '#' (' '|'\t')* 'elif' (~'\n')* '\n' ;
+//HASHERROR: '#' (' '|'\t')* 'error' (~'\n')* '\n' ;
+//HASHPRAGMA: '#' (' '|'\t')* 'pragma' (~'\n')* '\n' ;
+//HASHLINE: '#' (' '|'\t')* 'line' (~'\n')* '\n' ;
 
 COM : '/' '/' (~'\n')* '\n' REPLACEHIDDEN
     | OPENCOM (options {greedy=false;}: .)* CLOSECOM REPLACEHIDDEN

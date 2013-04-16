@@ -53,9 +53,10 @@ int type  = node->getType(node);
 int count = node->getChildCount(node);
   switch(type)
   {
-    case HASHINCLUDE:
-    case HASHDEFINE:
-    case HASHUNDEF:
+    case PREPRO:
+    //case HASHINCLUDE:
+    //case HASHDEFINE:
+    //case HASHUNDEF:
       break;
     case DECL:
       try {
@@ -123,6 +124,6 @@ cInCParser_translationUnit_return retVal;
 
 TranslationU model = TranslationU(retVal.tree);
   model.dump();
-  //dumpTree(retVal.tree,0);
+  dumpTree(retVal.tree,0);
 
 }
