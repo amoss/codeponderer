@@ -10,7 +10,8 @@ void takeWhile(list<pANTLR3_BASE_TREE>::iterator &it, list<pANTLR3_BASE_TREE>::i
 Type::Type( ) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
-  params(NULL), nParams(-1), typedefName(NULL), retType(NULL), nFields(0), fields(NULL)
+  params(NULL), nParams(-1), typedefName(NULL), retType(NULL), nFields(0), fields(NULL),
+  isEnum(false)
 {
 }
 
@@ -18,7 +19,8 @@ Type::Type( ) :
 Type::Type( list<pANTLR3_BASE_TREE>::iterator start, list<pANTLR3_BASE_TREE>::iterator end) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
-  params(NULL), nParams(-1), typedefName(NULL), retType(NULL), nFields(0), fields(NULL)
+  params(NULL), nParams(-1), typedefName(NULL), retType(NULL), nFields(0), fields(NULL),
+  isEnum(false)
 {
   parse(start,end);
 }
@@ -52,6 +54,10 @@ void Type::parse(TokList::iterator start, TokList::iterator end)
       case STRUCT:
         // If there is an IDENT inside then store the name, else anonymous
         // Build the field list by parsing the declarations
+        isStruct = true;
+        break;
+      case ENUM :
+        isEnum = true;
         break;
       default:
         if( tok->getText(tok) != NULL )

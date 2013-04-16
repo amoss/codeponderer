@@ -68,6 +68,8 @@ declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)
             -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+)
             | structSpecifier  
             -> ^(DECL structSpecifier)
+            | enumSpecifier
+            -> ^(DECL enumSpecifier)
             ;
 paramDecl   :      typeQualifier? typeWrapper STAR* IDENT 
             -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT); 
@@ -154,15 +156,19 @@ structDeclList : (declaration SEMI | PREPRO)+
                ;
 
 enumSpecifier : ENUM IDENT? OPENBRA enumList CLOSEBRA
+              -> ^(ENUM IDENT? enumList)
               | ENUM IDENT
               ;
 
-enumList : enumerator ( COMMA enumerator )+
+enumList : enumerator ( COMMA enumerator )*
+         -> enumerator+
          ;
 
-enumerator : IDENT
-     | IDENT '=' constExpr
-     ;
+enumerator : IDENT '=' constExpr
+           -> ^(ENUM IDENT constExpr)
+           | IDENT
+           -> ^(ENUM IDENT)
+           ;
 
 notscope : ~(OPENBRA|CLOSEBRA) ;
 compoundStmt : OPENBRA notscope* (compoundStmt notscope*)* CLOSEBRA 

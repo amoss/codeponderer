@@ -4,7 +4,8 @@
 class Type
 {
 public:
-  bool isStatic, isExtern, isTypedef, isAuto, isRegister, isUnsigned, isFunction, isConst, isStruct;
+  bool isStatic, isExtern, isTypedef, isAuto, isRegister, isUnsigned, isFunction, isConst, 
+       isStruct, isEnum;
   int  primType; 
   int stars;
   int array;
