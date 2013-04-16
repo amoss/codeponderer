@@ -88,7 +88,7 @@ declName    : OPENPAR STAR IDENT (OPENPAR declPar CLOSEPAR)? CLOSEPAR
             ;
 declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for simplicity
             -> ^(DECLPAR declPar?)
-            | OPENSQ constExpr CLOSESQ        // Arrays
+            | OPENSQ constExpr? CLOSESQ        // Arrays
             ;
 declPar     : paramDecl (COMMA paramDecl)* // Prototypes with idents 
             -> paramDecl+
@@ -111,9 +111,8 @@ functionDef : storageClass? typeQualifier? typeWrapper (STAR typeQualifier?)* ID
 //          ;
 
 
-initialiser : ASSIGN (constExpr | arrayInit);
+initialiser : ASSIGN (constExpr | compoundInit);
 
-arrayInit : OPENBRA constExpr (COMMA constExpr)* CLOSEBRA ;
 
 // Type can be prefixed by one of
 storageClass : TYPEDEF      // Not a variable then.
@@ -177,7 +176,13 @@ compoundStmt : OPENBRA notscope* (compoundStmt notscope*)* CLOSEBRA
 
 
 
-constExpr : NUM | STR | CHARLIT | IDENT | AMP IDENT;
+compoundInit : OPENBRA constExpr (COMMA constExpr)* COMMA? CLOSEBRA ;
+constExpr : NUM 
+          | STR 
+          | CHARLIT 
+          | IDENT 
+          | AMP IDENT
+          | compoundInit ;
 
 fragment DIGIT : '0'..'9'
                ;
