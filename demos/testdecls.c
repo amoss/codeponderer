@@ -54,6 +54,12 @@ int (*fp1) (int);     // NOT EVEN CLOSE
 int * (* (*fp2) (int) );     // NOT EVEN CLOSE
 int * (* (*fp3) (int) ) [10];     // NOT EVEN CLOSE
 
+// Structures
+struct a { int crap; } x;
+struct a y;
+struct { char a,b,c; } triple;
+struct { struct a first,second; };
+
 typedef struct 
 {
     int x,y;

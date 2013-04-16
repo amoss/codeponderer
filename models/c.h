@@ -4,7 +4,7 @@
 class Type
 {
 public:
-  bool isStatic, isExtern, isTypedef, isAuto, isRegister, isUnsigned, isFunction, isConst;
+  bool isStatic, isExtern, isTypedef, isAuto, isRegister, isUnsigned, isFunction, isConst, isStruct;
   int  primType; 
   int stars;
   int array;
@@ -12,6 +12,9 @@ public:
   char *typedefName;
   Type *params;
   char **paramNames;
+  int nFields;
+  Type *fields;
+  char **fieldNames;
   Type *retType;
   Type();
   Type( TokList::iterator start, TokList::iterator end);

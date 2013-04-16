@@ -10,7 +10,7 @@ void takeWhile(list<pANTLR3_BASE_TREE>::iterator &it, list<pANTLR3_BASE_TREE>::i
 Type::Type( ) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
-  params(NULL), nParams(-1), typedefName(NULL), retType(NULL)
+  params(NULL), nParams(-1), typedefName(NULL), retType(NULL), nFields(0), fields(NULL)
 {
 }
 
@@ -18,7 +18,7 @@ Type::Type( ) :
 Type::Type( list<pANTLR3_BASE_TREE>::iterator start, list<pANTLR3_BASE_TREE>::iterator end) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
-  params(NULL), nParams(-1), typedefName(NULL), retType(NULL)
+  params(NULL), nParams(-1), typedefName(NULL), retType(NULL), nFields(0), fields(NULL)
 {
   parse(start,end);
 }
@@ -49,11 +49,15 @@ void Type::parse(TokList::iterator start, TokList::iterator end)
         primType = TYPEDEF;
         typedefName = (char*)tok->getText(tok)->chars;
         break;
+      case STRUCT:
+        // If there is an IDENT inside then store the name, else anonymous
+        // Build the field list by parsing the declarations
+        break;
       default:
         if( tok->getText(tok) != NULL )
-          printf("decl-->%s %d\n", (char*)tok->getText(tok)->chars, tokT);
+          printf("Type::parse unknown --> %s %d\n", (char*)tok->getText(tok)->chars, tokT);
         else
-          printf("decl-->empty %d\n", tokT);
+          printf("Type::parse unknown --> empty %d\n", tokT);
         break;
     }
     ++start;
@@ -286,7 +290,7 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
             printf("ERROR: truncated array expression\n");
         }
         break;
-      case EQUALS:
+      case ASSIGN:
         return;      // Skip initialiser expressions
       // A parenthesised tail to a declarator
       case DECLPAR:

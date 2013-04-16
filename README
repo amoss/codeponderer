@@ -13,7 +13,7 @@ Testcase status:
   testcases/gawk-4.0.2/command.c Lex error
     Looks like the ... in the arguments on line 84.
   testcases/gawk-4.0.2/debug.c Lex error
-    Need to put structs in the grammar, line 69.
+    Problem with enum, line 191.
   testcases/gawk-4.0.2/dfa.c Lex error
     Need an inline keyword.
   testcases/gawk-4.0.2/eval.c Lex error 

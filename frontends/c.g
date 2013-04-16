@@ -59,9 +59,16 @@ typeWrapper : typeSpecifier+
             ;
 
 // These three entities (variable declarations, function definition parameters and
-// function prototype parameters) are each variations on defining a type.
+// function prototype parameters) are each variations on defining a type. In the 
+// spec the init-decl-list is optional, but this is just for the case that a struct
+// is a pure definition without a declaration. Most compilers trap the other cases
+// later. Here the init-decl-list must contain at least one item (even if just an IDENT)
+// with a special case for struct definitions.
 declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)*
-            -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+) ;
+            -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+)
+            | structSpecifier  
+            -> ^(DECL structSpecifier)
+            ;
 paramDecl   :      typeQualifier? typeWrapper STAR* IDENT 
             -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT); 
 protoDecl :               typeQualifier? typeWrapper STAR*
@@ -102,7 +109,7 @@ functionDef : storageClass? typeQualifier? typeWrapper (STAR typeQualifier?)* ID
 //          ;
 
 
-initialiser : EQUALS (constExpr | arrayInit);
+initialiser : ASSIGN (constExpr | arrayInit);
 
 arrayInit : OPENBRA constExpr (COMMA constExpr)* CLOSEBRA ;
 
@@ -132,18 +139,21 @@ typeQualifier : CONST
               | VOLATILE
               ;
 
-unionSpecifier : 'union' IDENT? '{' structDeclList '}'
-               | 'union' IDENT
+unionSpecifier : UNION IDENT? OPENBRA structDeclList CLOSEBRA
+               | UNION IDENT
                ;
 
-structSpecifier : 'struct' IDENT? '{' structDeclList '}'
-                | 'struct' IDENT
+structSpecifier : STRUCT IDENT? OPENBRA structDeclList CLOSEBRA
+                -> ^(STRUCT IDENT structDeclList)
+                | STRUCT IDENT
+                -> ^(STRUCT IDENT)
                 ;
 
-structDeclList : declaration+
+structDeclList : (declaration SEMI | PREPRO)+
+               -> declaration+
                ;
 
-enumSpecifier : ENUM IDENT? '{' enumList '}'
+enumSpecifier : ENUM IDENT? OPENBRA enumList CLOSEBRA
               | ENUM IDENT
               ;
 
@@ -161,10 +171,7 @@ compoundStmt : OPENBRA notscope* (compoundStmt notscope*)* CLOSEBRA
 
 
 
-constExpr : NUM | STR | CHARLIT | IDENT;
-
-ENUM : 'enum'
-             ;
+constExpr : NUM | STR | CHARLIT | IDENT | AMP IDENT;
 
 fragment DIGIT : '0'..'9'
                ;
@@ -179,7 +186,6 @@ OPENBRA  : '{' ;
 CLOSEBRA : '}' ;
 OPENSQ   : '[' ;
 CLOSESQ  : ']' ;
-EQUALS   : '=' ;
 OPENCOM  : '/*' ;
 CLOSECOM : '*/' ;
 
@@ -199,6 +205,10 @@ AUTO     : 'auto';
 REGISTER : 'register';
 CONST    : 'const';
 VOLATILE : 'volatile';
+
+STRUCT   : 'struct';
+UNION    : 'union';
+ENUM     : 'enum';
 
 COMMA : ',' ;
 STAR  : '*' ;
@@ -273,7 +283,7 @@ OPMOD    : '%' ;
 AMP      : '&' ;
 QUESTION : '?' ;
 COLON    : ':' ;
-// ASSIGN   : '=' ;           Need to fix precedence
+ASSIGN   : '=' ; 
 OPBINOR  : '|' ;
 OPBINNOT : '~' ;
 OPBINXOR : '^' ;
