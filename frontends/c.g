@@ -44,6 +44,9 @@ externDecl : functionDef
            | HASHINCLUDE
            | HASHDEFINE
            | HASHUNDEF
+           | HASHIF
+           | HASHELSE
+           | HASHENDIF
            ;
 
 // (optionally) Initialised declarators
@@ -66,7 +69,7 @@ declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)
             -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+) ;
 paramDecl   :      typeQualifier? typeWrapper STAR* IDENT 
             -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT); 
-protoDecl :               typeWrapper typeQualifier? STAR*
+protoDecl :               typeQualifier? typeWrapper STAR*
           -> ^(PARAM typeWrapper typeQualifier? STAR*);
 
 // A declarator binds a form and name to a storage and type within a scope.
@@ -94,7 +97,7 @@ declPar     : paramDecl (COMMA paramDecl)* // Prototypes with idents
 
 
 // Todo: check declSpecs replacement
-functionDef : storageClass? typeWrapper typeQualifier? IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
+functionDef : storageClass? typeQualifier? typeWrapper (STAR typeQualifier?)* IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
              -> ^(FUNC IDENT compoundStmt paramDecl* storageClass? typeWrapper typeQualifier?)
             ;
 
@@ -157,13 +160,13 @@ enumerator : IDENT
      ;
 
 notscope : ~(OPENBRA|CLOSEBRA) ;
-compoundStmt : OPENBRA notscope* compoundStmt* notscope* CLOSEBRA 
+compoundStmt : OPENBRA notscope* (compoundStmt notscope*)* CLOSEBRA 
             -> ^(OPENBRA compoundStmt*) 
              ;
 
 
 
-constExpr : NUM | STR | CHARLIT;
+constExpr : NUM | STR | CHARLIT | IDENT;
 
 ENUM : 'enum'
              ;
@@ -212,12 +215,17 @@ NUM : '-' DIGIT+ ('.' DIGIT+)?
 IDENT : ALPHA (ALPHA | DIGIT)* ;
 
 STR : '"' ('\\"' | ~'"')* '"' ;
-CHARLIT : '\'' ~('\'') '\'' ;
+CHARLIT : '\'' (~('\'') | ESC) '\'' ;
+
+fragment ESC : '\\' ('r' | 't' | 'n' | DIGIT+) ;
 
 // Preprocess commands will be awkward because of the interaction with whitespace
 HASHINCLUDE: '#include' (~'\n')* '\n' ;
 HASHDEFINE: '#define' (~'\n')* '\n' ;
 HASHUNDEF: '#undef' (~'\n')* '\n' ;
+HASHIF: '#if' (~'\n')* '\n' ;
+HASHENDIF: '#endif' (~'\n')* '\n' ;
+HASHELSE: '#else' (~'\n')* '\n' ;
 
 COM : '/' '/' (~'\n')* '\n' REPLACEHIDDEN
     | OPENCOM (options {greedy=false;}: .)* CLOSECOM REPLACEHIDDEN

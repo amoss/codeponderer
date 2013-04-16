@@ -15,7 +15,7 @@ CFLAGS=-g -I. -Igenerated -Iantlr-3.1.3/runtime/C/include -Iantlr-3.1.3/runtime/
 
 demos: demos/trivial
 
-demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o models/util.o models/c.o cRuntime
+demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o models/util.o models/c.o $(RUNLIB)
 	g++ -g demos/trivial.cc generated/cInCLexer.o generated/cInCParser.o models/util.o models/c.o -I. -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
 
 frontends: generated/cInCParser.c generated/cInPyParser.py
@@ -38,17 +38,16 @@ generated/cInPyParser.py: frontends/cInPy.g antlr-3.1.3/lib/antlr-3.1.3.jar
 generated/cInCParser.c: frontends/cInC.g antlr-3.1.3/lib/antlr-3.1.3.jar
 	java -classpath antlr-3.1.3/lib/antlr-3.1.3.jar org.antlr.Tool -fo generated frontends/cInC.g
 
-generated/cInCLexer.o: generated/cInCLexer.c cRuntime
+generated/cInCLexer.o: generated/cInCLexer.c $(RUNLIB)
 	gcc -c generated/cInCLexer.c ${CFLAGS} -o generated/cInCLexer.o
 
-generated/cInCParser.o: generated/cInCParser.c cRuntime
+generated/cInCParser.o: generated/cInCParser.c $(RUNLIB)
 	gcc -c generated/cInCParser.c ${CFLAGS} -o generated/cInCParser.o
 
 antlr-3.1.3/lib/antlr-3.1.3.jar:
 	curl http://www.antlr3.org/download/antlr-3.1.3.tar.gz | tar xz
 
-cRuntime: antlr-3.1.3/lib/antlr-3.1.3.jar $(RUNLIB)
-$(RUNLIB): 
+$(RUNLIB): antlr-3.1.3/lib/antlr-3.1.3.jar
 	bin/buildCRuntime.bash
 
 testcases: testcases/gawk-4.0.2/array.c
