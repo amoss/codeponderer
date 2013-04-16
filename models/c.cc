@@ -31,6 +31,9 @@ void Type::parse(TokList::iterator start, TokList::iterator end)
     int tokT = tok->getType(tok);
     switch(tokT)
     {
+      case STAR:
+        stars++;
+        break;
       case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID:
         primType = tokT;
         break;
@@ -240,8 +243,8 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
         if( ptr->getType(ptr)==STAR )
           type.retType->stars++;
       tmplEnd
-      printf("About to do dtors:\n");
-      dumpTree(subTree,1);
+      //printf("About to do dtors:\n");
+      //dumpTree(subTree,1);
       break;
     }
 
@@ -314,19 +317,58 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
   }
 }
 
+/* This is where we resolve typenames / symbol names. Until now both are flushed down from the
+   grammar as IDENTs. Normally people expend a huge amount of effort on threading a symbol
+   table throughout every rule in the grammar to make sure they can tell these two types of
+   tokens apart (context-sensitive so cannot be handled with a vanilla CFG). Instead we put
+   the complexity in this one place where we can count the IDENTs in a stream and use a simple
+   state machine to do the separation.
+*/
+void findTypeTokens(TokList stream, TokList &typeToks, TokList &rest)
+{
+int idCount = 0;
+bool prefix = true;
+  tmplForeach(list, pANTLR3_BASE_TREE, tok, stream)
+    if(prefix)
+    {
+      switch(tok->getType(tok))
+      {
+        case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID:
+          idCount = 1;    // Pretend we saw the ident
+          break;
+        case UNSIGNED: case AUTO:   case TYPEDEF: case EXTERN: case STATIC:
+        case VOLATILE: case CONST:  
+          break;        // Continue in prefix
+        case IDENT:
+          if( idCount++ > 0 )
+            prefix = false;
+          break;
+        default:
+          prefix = false;
+          break;
+      }
+    }
+    if(prefix)
+      typeToks.push_back(tok);
+    else
+      rest.push_back(tok);
+  tmplEnd
+}
+
 /* Parameters are either type signatures (prototypes), or types + names (prototypes and 
    definitions). We can represent the type+name combination as a Decl, and use NULL
    identifiers for the anonymous cases.
 */
 char *parseParam(pANTLR3_BASE_TREE node, Type *target)
 {
-  list<pANTLR3_BASE_TREE> children = extractChildren(node,0,-1);
+  TokList children = extractChildren(node,0,-1);
   //if( children.size() < 2 )
   //  throw BrokenTree(node, "Illegal parameter, too few children");
 
   // Process: typeWrapper typeQualifier?
   list<pANTLR3_BASE_TREE> typeToks, others;
-  splitList<pANTLR3_BASE_TREE>(children, typeToks, others, isTypeTok);
+  findTypeTokens(children, typeToks, others);
+  //splitList<pANTLR3_BASE_TREE>(children, typeToks, others, isTypeTok);
   target->parse(typeToks.begin(), typeToks.end());
 
   // Process: STAR*
@@ -343,7 +385,7 @@ char *parseParam(pANTLR3_BASE_TREE node, Type *target)
     pANTLR3_BASE_TREE idTok = *walk;
     if( idTok->getType(idTok) != IDENT )
       throw BrokenTree(node, "Non-IDENT following STARs in paramter");
-    return (char*)idTok->getText(idTok);
+    return (char*)idTok->getText(idTok)->chars;
   }
   return NULL;
 }
@@ -365,9 +407,14 @@ TokList rest = extractChildren(node,2,-1);
 TokList::iterator child = rest.begin();
   takeWhile( child, rest.end(), params, isParam);
   retType.parse(child, rest.end());
+  /* Once upon a time these parameters were parsed as declarations, back when the world was young and
+     the token stream was flat. But it because necessary to indicate dtor boundaries so that IDENTs
+     could be resolved into symbol names and typedef'd names. Hence the slightly ugly construction here */
   tmplForeach( list, pANTLR3_BASE_TREE, p, params)
-    printf("Trying to do param:");
-    dumpTree(p,1);
-    Decl::parse(p, args);
+    Type dummy;
+    char *name = parseParam(p, &dummy);
+    Decl *d = new Decl(dummy);
+    d->identifier = name;
+    args.push_back(d);
   tmplEnd
 }

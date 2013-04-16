@@ -123,6 +123,6 @@ cInCParser_translationUnit_return retVal;
 
 TranslationU model = TranslationU(retVal.tree);
   model.dump();
-  dumpTree(retVal.tree,0);
+  //dumpTree(retVal.tree,0);
 
 }
