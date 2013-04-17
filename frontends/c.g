@@ -95,13 +95,14 @@ declPar     : paramDecl (COMMA paramDecl)* // Prototypes with idents
             | protoDecl (COMMA protoDecl)* // Prototypes with no idents
             -> protoDecl+
             | declarator                   // Precedence only 
+            | VOID                         // Function proto
             ;
 
 
 
 
 // Todo: check declSpecs replacement
-functionDef : storageClass? typeQualifier? typeWrapper (STAR typeQualifier?)* IDENT OPENPAR (paramDecl (COMMA paramDecl)*)? CLOSEPAR compoundStmt
+functionDef : storageClass? INLINE? typeQualifier? typeWrapper (STAR typeQualifier?)* IDENT OPENPAR ((paramDecl (COMMA paramDecl)*)? | VOID) CLOSEPAR compoundStmt
              -> ^(FUNC IDENT compoundStmt paramDecl* storageClass? typeWrapper typeQualifier?)
             ;
 
@@ -111,7 +112,9 @@ functionDef : storageClass? typeQualifier? typeWrapper (STAR typeQualifier?)* ID
 //          ;
 
 
-initialiser : ASSIGN (constExpr | compoundInit);
+initialiser : ASSIGN (constExpr | compoundInit)
+            | ASSIGN (~(SEMI|COMMA))+
+            ;
 
 
 // Type can be prefixed by one of
@@ -176,7 +179,8 @@ compoundStmt : OPENBRA notscope* (compoundStmt notscope*)* CLOSEBRA
 
 
 
-compoundInit : OPENBRA constExpr (COMMA constExpr)* COMMA? CLOSEBRA ;
+//compoundInit : OPENBRA constExpr (COMMA constExpr)* COMMA? CLOSEBRA ;
+compoundInit : OPENBRA notscope* (compoundInit notscope*)* CLOSEBRA ;
 constExpr : NUM 
           | STR 
           | CHARLIT 
@@ -216,6 +220,7 @@ AUTO     : 'auto';
 REGISTER : 'register';
 CONST    : 'const';
 VOLATILE : 'volatile';
+INLINE   : 'inline';
 
 STRUCT   : 'struct';
 UNION    : 'union';
@@ -254,6 +259,8 @@ COM : '/' '/' (~'\n')* '\n' REPLACEHIDDEN
     ;
 WS : (' ' | '\\\n' | '\n' | '\t')+ REPLACEHIDDEN
    ;
+// GNU-c extensions that we simply want to ignore
+GNU : '__attribute__' (' ' | '\t')* '((__' ALPHA+ '__))' REPLACEHIDDEN ;
 
 ELLIPSIS : '...';
 ASSRIGHT : '>>=';
