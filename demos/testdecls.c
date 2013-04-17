@@ -5,6 +5,10 @@ long lx = -33, ly, lz[2] = { 0x1234, 55 };
 float fx, fy = 33.125, fz[2] = { 0.5, 0.7 };
 double dx, dy = 33.125, dz[2] = { 0.5, 0.7 };
 
+// String constants
+static char metas[] = ".*+(){}[]|?^$\\";
+static char metas2[] = ".*+(){}[]|?^$\\\"";
+
 // Mixture of specifiers
 const int n=7;
 static const char c='?';

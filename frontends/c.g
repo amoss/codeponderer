@@ -230,7 +230,7 @@ NUM : '-' DIGIT+ ('.' DIGIT+)?
     ;
 IDENT : ALPHA (ALPHA | DIGIT)* ;
 
-STR : '"' ('\\"' | ~'"')* '"' ;
+STR : '"' ('\\\\' | '\\"' | ~'"')* '"' ;
 CHARLIT : '\'' (~('\'') | ESC) '\'' ;
 
 fragment ESC : '\\' ('a' | 'b' | 'v' | 'f' | 'r' | 't' | 'n' | '\'' | '\\' | DIGIT+) ;
