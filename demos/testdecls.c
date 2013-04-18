@@ -43,19 +43,18 @@ int proto4(int *a, int **b);
 int *proto5(int *, int **);
 void mixing(int, int **, char x);
 void (*proc1)();
+int (*fp1) (int);     
 int **(*messy)(int *);
 int (*nasty(int))();    // Returns a fptr -> int f(int)
-int (*nasty2(int,int))(int*,int(*arg)(int));    // Returns a fptr -> int f(int)
+int (*nasty2(int,int))(int*,int(*arg)(int));    // Returns a fptr -> int f(int,int)
 typedef void (*proc)();
 int reg(void (*callback)());
+int reg(void (*callback)())
+{
+}
 
 // Broken stuff
 //*ptr;
-(int *ptr2b);            // Is this valid?
-//(*ptr2);            // Is this valid?
-// NO nasty(*,*,*);       // Is this valid?
-// NO ugly(,,,);          // ?
-int (*fp1) (int);     // NOT EVEN CLOSE
 int * (* (*fp2) (int) );     // NOT EVEN CLOSE
 int * (* (*fp3) (int) ) [10];     // NOT EVEN CLOSE
 

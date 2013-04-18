@@ -71,12 +71,9 @@ declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)
             | enumSpecifier
             -> ^(DECL enumSpecifier)
             ;
-paramDecl   :      typeQualifier? typeWrapper STAR* IDENT 
-            -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT)
-            | ELLIPSIS
-            -> ^(PARAM ELLIPSIS)
-            ;
-protoDecl :               typeQualifier? typeWrapper STAR* IDENT?
+protoDecl : typeWrapper STAR* fptrName OPENPAR declPar? CLOSEPAR
+          -> ^(PARAM typeWrapper STAR* fptrName declPar?)
+          |               typeQualifier? typeWrapper STAR* IDENT?
           -> ^(PARAM typeWrapper typeQualifier? STAR* IDENT?)
           | ELLIPSIS
           -> ^(PARAM ELLIPSIS)
@@ -87,14 +84,15 @@ protoDecl :               typeQualifier? typeWrapper STAR* IDENT?
 // The standard splits this element into two-levels, not sure why... they are
 // left-recursive so follow Parr's transformation onto repeating suffixes
 // This is still far less messy than trying to resolve IDENTs/types during the parse...
-declarator  : (STAR typeQualifier?)* declName declTail*;
-declName    : OPENPAR STAR IDENT (OPENPAR declPar CLOSEPAR)? CLOSEPAR
+declarator  : (STAR typeQualifier?)* (fptrName|IDENT) declTail*;
+
+fptrName    : OPENPAR STAR IDENT (OPENPAR declPar CLOSEPAR)? CLOSEPAR
             -> ^(FPTR STAR IDENT declPar?)
-            | IDENT
             ;
 declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for simplicity
             -> ^(DECLPAR declPar?)
-            | OPENSQ constExpr? CLOSESQ        // Arrays
+            //| OPENSQ constExpr? CLOSESQ        // Arrays
+            | OPENSQ (~CLOSESQ)* CLOSESQ        // Arrays
             ;
 declPar     : protoDecl (COMMA protoDecl)* // Prototypes with optional idents
             -> protoDecl+
@@ -104,9 +102,18 @@ declPar     : protoDecl (COMMA protoDecl)* // Prototypes with optional idents
 
 
 
+paramDecl   : typeWrapper STAR* fptrName OPENPAR declPar? CLOSEPAR
+            -> ^(PARAM typeWrapper STAR* fptrName declPar?)
+            |      typeQualifier? typeWrapper STAR* IDENT 
+            -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT)
+            | ELLIPSIS
+            -> ^(PARAM ELLIPSIS)
+            ;
 
 // Todo: check declSpecs replacement
-functionDef : storageClass? INLINE? typeQualifier? typeWrapper (STAR typeQualifier?)* IDENT OPENPAR ((paramDecl (COMMA paramDecl)*)? | VOID) CLOSEPAR compoundStmt
+functionDef : storageClass? INLINE? typeQualifier? typeWrapper (STAR typeQualifier?)* 
+              IDENT OPENPAR ((paramDecl (COMMA paramDecl)*)? | VOID) CLOSEPAR 
+              compoundStmt
              -> ^(FUNC IDENT compoundStmt paramDecl* storageClass? typeWrapper typeQualifier?)
             ;
 
@@ -170,8 +177,11 @@ enumList : enumerator ( COMMA enumerator )*
          -> enumerator+
          ;
 
-enumerator : IDENT '=' constExpr
-           -> ^(ENUM IDENT constExpr)
+//enumerator : IDENT '=' constExpr
+//           -> ^(ENUM IDENT constExpr)
+notenum : ~(COMMA|CLOSEBRA);
+enumerator : IDENT '=' notenum+
+           -> ^(ENUM IDENT)
            | IDENT
            -> ^(ENUM IDENT)
            ;
@@ -264,7 +274,7 @@ COM : '/' '/' (~'\n')* '\n' REPLACEHIDDEN
 WS : (' ' | '\\\n' | '\n' | '\t')+ REPLACEHIDDEN
    ;
 // GNU-c extensions that we simply want to ignore
-GNU : '__attribute__' (' ' | '\t')* '((__' ALPHA+ '__))' REPLACEHIDDEN ;
+GNU : '__attribute' '__'? (' ' | '\t')* '((' ALPHA+ '))' REPLACEHIDDEN ;
 
 ELLIPSIS : '...';
 ASSRIGHT : '>>=';
