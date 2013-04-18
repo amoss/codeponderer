@@ -72,9 +72,15 @@ declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)
             -> ^(DECL enumSpecifier)
             ;
 paramDecl   :      typeQualifier? typeWrapper STAR* IDENT 
-            -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT); 
-protoDecl :               typeQualifier? typeWrapper STAR*
-          -> ^(PARAM typeWrapper typeQualifier? STAR*);
+            -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT)
+            | ELLIPSIS
+            -> ^(PARAM ELLIPSIS)
+            ;
+protoDecl :               typeQualifier? typeWrapper STAR* IDENT?
+          -> ^(PARAM typeWrapper typeQualifier? STAR* IDENT?)
+          | ELLIPSIS
+          -> ^(PARAM ELLIPSIS)
+          ;
 
 // A declarator binds a form and name to a storage and type within a scope.
 // e.g. it specifies a kind of thing (as opposed to the type of a thing).
@@ -90,9 +96,7 @@ declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for s
             -> ^(DECLPAR declPar?)
             | OPENSQ constExpr? CLOSESQ        // Arrays
             ;
-declPar     : paramDecl (COMMA paramDecl)* // Prototypes with idents 
-            -> paramDecl+
-            | protoDecl (COMMA protoDecl)* // Prototypes with no idents
+declPar     : protoDecl (COMMA protoDecl)* // Prototypes with optional idents
             -> protoDecl+
             | declarator                   // Precedence only 
             | VOID                         // Function proto

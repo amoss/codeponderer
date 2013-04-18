@@ -41,6 +41,7 @@ int proto2(char name);
 int proto3(int blah, char name);
 int proto4(int *a, int **b);
 int *proto5(int *, int **);
+void mixing(int, int **, char x);
 void (*proc1)();
 int **(*messy)(int *);
 int (*nasty(int))();    // Returns a fptr -> int f(int)
