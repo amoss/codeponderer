@@ -84,12 +84,13 @@ declaration : declSpec initDecl (COMMA initDecl)*
             | enumSpecifier
             -> ^(DECL enumSpecifier)
             ;
-protoDecl : declSpec STAR* fptrName OPENPAR declPar? CLOSEPAR
-          -> ^(PARAM declSpec STAR* fptrName declPar?)
+protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
+          -> ^(PARAM declSpec STAR* fptrName ^(DECLPAR declPar) ) 
+          | declSpec STAR* fptrName OPENPAR CLOSEPAR
+          -> ^(PARAM declSpec STAR* fptrName ) 
           |               declSpec STAR* IDENT?
           -> ^(PARAM declSpec STAR* IDENT?)
           | ELLIPSIS
-          -> ^(PARAM ELLIPSIS)
           ;
 
 // A declarator binds a form and name to a storage and type within a scope.
@@ -102,10 +103,12 @@ declarator  : (STAR typeQualifier?)* (fptrName|IDENT) declTail*;
 fptrName    : OPENPAR STAR IDENT (OPENPAR declPar CLOSEPAR)? CLOSEPAR
             -> ^(FPTR STAR IDENT declPar?)
             ;
+notsq : ~CLOSESQ;
 declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for simplicity
             -> ^(DECLPAR declPar?)
             //| OPENSQ constExpr? CLOSESQ        // Arrays
-            | OPENSQ (~CLOSESQ)* CLOSESQ        // Arrays
+            | OPENSQ notsq* CLOSESQ        // Arrays
+            -> ^(OPENSQ notsq* CLOSESQ)
             ;
 declPar     : protoDecl (COMMA protoDecl)* // Prototypes with optional idents
             -> protoDecl+
@@ -118,7 +121,6 @@ declPar     : protoDecl (COMMA protoDecl)* // Prototypes with optional idents
 paramDecl   : declSpec declarator 
             -> ^(PARAM declSpec declarator)
             | ELLIPSIS
-            -> ^(PARAM ELLIPSIS)
             ;
 
 // Todo: check declSpecs replacement
@@ -187,6 +189,7 @@ structDeclList : (declaration SEMI | PREPRO)+
 enumSpecifier : ENUM IDENT? OPENBRA enumList CLOSEBRA
               -> ^(ENUM IDENT? enumList)
               | ENUM IDENT
+              -> ^(ENUM IDENT)
               ;
 
 enumList : enumerator ( COMMA enumerator )*

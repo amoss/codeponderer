@@ -36,7 +36,7 @@ void Type::parse(TokList::iterator start, TokList::iterator end)
       case STAR:
         stars++;
         break;
-      case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID:
+      case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID: case SHORT:
         primType = tokT;
         break;
       case UNSIGNED :  isUnsigned = true; break;
@@ -45,6 +45,9 @@ void Type::parse(TokList::iterator start, TokList::iterator end)
       case EXTERN:     isExtern = true;   break;
       case STATIC:     isStatic = true;   break;
       case CONST:      isConst  = true;   break;
+      case VOLATILE:                      break;
+      case INLINE:                        break;
+      case ELLIPSIS:                      break;
       case DECL: 
         return;        // Type tokens are prior to declarators
       case IDENT:
@@ -281,6 +284,10 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
     switch(tok->getType(tok))
     {
       case OPENSQ:
+        break;
+      /* ********* Leave this out until we parse expressions
+
+
         if(distance(tokIt,dtorToks.end()) < 2)
           printf("ERROR: truncated array expression\n");
         else
@@ -295,7 +302,7 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
           if(++tokIt==ptrQualToks.end())
             printf("ERROR: truncated array expression\n");
         }
-        break;
+        break;*/
       case ASSIGN:
         return;      // Skip initialiser expressions
       // A parenthesised tail to a declarator
@@ -304,7 +311,7 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
         TokList parCnts = extractChildren(tok, 0, -1);
         // Check first (counts as a side-effect) to ease initialisation in array
         tmplForeach(list, pANTLR3_BASE_TREE, parTok, parCnts)
-          if( parTok->getType(parTok) != PARAM )
+          if( parTok->getType(parTok) != PARAM && parTok->getType(parTok) != ELLIPSIS)
             throw BrokenTree(tok,"Non-PARAM node inside a declTail parenthesized block");
         tmplEnd
         type.nParams = parCnts.size();
@@ -313,15 +320,17 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
 
         int i=0;
         tmplForeach(list, pANTLR3_BASE_TREE, parTok, parCnts)
-          type.paramNames[i] =  parseParam(parTok, &type.params[i]);
+          if( parTok->getType(parTok) == ELLIPSIS )
+            type.paramNames[i] = "...";
+          else
+            type.paramNames[i] =  parseParam(parTok, &type.params[i]);
           i++;
-          //printf("PARAM inside declpar:\n");
-          //dumpTree(decl,1);
         tmplEnd
         type.isFunction = true;
         break;
       }
       default:
+        dumpTree(subTree,0);
         throw BrokenTree(tok, "Unexpected child type in subtree:");
     }
   }
@@ -343,7 +352,8 @@ bool prefix = true;
     {
       switch(tok->getType(tok))
       {
-        case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID:
+        case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID: case STRUCT:
+        case SHORT: case ENUM:
           idCount = 1;    // Pretend we saw the ident
           break;
         case UNSIGNED: case AUTO:   case TYPEDEF: case EXTERN: case STATIC:
@@ -384,8 +394,15 @@ char *parseParam(pANTLR3_BASE_TREE node, Type *target)
   // Process: STAR*
   TokList::iterator walk = others.begin();
   target->stars = 0;
-  while(walk!=others.end() && (*walk)->getType(*walk)==STAR) {
-    target->stars++;
+  while(walk!=others.end())
+  {
+    ANTLR3_UINT32 nType = (*walk)->getType(*walk);
+    if (nType==STAR)
+      target->stars++;
+    else if(nType==CONST)
+      ;
+    else 
+      break;
     ++walk;
   }
 
@@ -393,8 +410,28 @@ char *parseParam(pANTLR3_BASE_TREE node, Type *target)
   if( walk!=others.end() )
   {
     pANTLR3_BASE_TREE idTok = *walk;
+    if( idTok->getType(idTok) == FPTR )
+    {
+      // TODO: Merge this with the other FPTR processing block
+      TokList fpChildren = extractChildren(idTok, 0, -1);
+      if( fpChildren.size()<2 )
+        throw BrokenTree(idTok, "FPTR without enough children");
+      pANTLR3_BASE_TREE id2Tok = *(++fpChildren.begin());
+      if( id2Tok->getType(id2Tok)!=IDENT )
+        throw BrokenTree(idTok, "FPTR did not contain IDENT");
+      target->isFunction = true;
+      target->retType = new Type();
+      target->retType->stars = target->stars;
+      target->stars = 1;
+      target->retType->primType = target->primType;
+      target->primType = FPTR;
+      return (char *)id2Tok->getText(id2Tok)->chars;
+    }
     if( idTok->getType(idTok) != IDENT )
+    {
+      dumpTree(idTok,0);
       throw BrokenTree(node, "Non-IDENT following STARs in paramter");
+    }
     return (char*)idTok->getText(idTok)->chars;
   }
   return NULL;
