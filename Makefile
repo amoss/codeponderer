@@ -38,6 +38,7 @@ generated/cInPyParser.py: frontends/cInPy.g antlr-3.1.3/lib/antlr-3.1.3.jar
 generated/cInCParser.c: frontends/cInC.g antlr-3.1.3/lib/antlr-3.1.3.jar
 	java -classpath antlr-3.1.3/lib/antlr-3.1.3.jar org.antlr.Tool -fo generated frontends/cInC.g
 
+generated/cInCLexer.c: generated/cInCParser.c
 generated/cInCLexer.o: generated/cInCLexer.c $(RUNLIB)
 	gcc -c generated/cInCLexer.c ${CFLAGS} -o generated/cInCLexer.o
 
