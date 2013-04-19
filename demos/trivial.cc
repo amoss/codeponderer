@@ -15,15 +15,6 @@ int getChildType(pANTLR3_BASE_TREE parent, int idx)
 }
 
 
-/*class Func
-{
-public:
-  char *identifier;
-  Decl retType;
-  list<Decl*> params;
-};
-*/
-
 class TranslationU
 {
 public:
@@ -63,7 +54,7 @@ int count = node->getChildCount(node);
         Decl::parse(node,globals);
       }
       catch(BrokenTree bt) {
-        printf("ERROR: %s\n", bt.explain);
+        printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
         dumpTree(bt.blame,1);
       }
       break;
@@ -75,7 +66,7 @@ int count = node->getChildCount(node);
         functions.push_back(f);
       }
       catch(BrokenTree bt) {
-        printf("ERROR: %s\n", bt.explain);
+        printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
         dumpTree(bt.blame,1);
       }
       break;
