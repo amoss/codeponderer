@@ -49,14 +49,27 @@ initDecl : declarator initialiser?
          -> ^(DECL declarator initialiser?)
          ;
 
-// This is where we account for typedefs. Normally a grammar would use a real symbol
-// table and semantic actions to check on-the-fly if the ident is a declared type.
-// In order to keep this grammar language independent we allow an arbitrary IDENT
-// as a type and defer the validity check until a later pass (thus no complex semantic
-// actions in the grammar).
-typeWrapper : typeSpecifier+ 
-            | IDENT 
-            ;
+/* A typename / identifier ambiguity.
+   Normally a grammar would use a real symbol-table and semantic actions to build state during parsing
+   and query the state in the lexer to decide if a symbol is an IDENT or a TYPENAME (defined in an
+   earlier typedef). This is horrific and causes an explosion of complexity in the grammar. One of the
+   purposes of writing this grammar was to determine if we could avoid this slice of horror. The rule
+   below is a simple counting machine that decides if the IDENT is a type or a name, without the need
+   to embed symbol-tables in the check on-the-fly if the ident is a declared type. This means that the
+   tree rewrites are the only processing required in the grammar, so it can be target language independent.
+   TODO: There is still the more general case "foo*bar;" which needs to be covered when expressions and
+         local declarations are handled
+*/
+declSpec : storageClass   declSpec?
+         | typeQualifier  declSpec?
+         | typeSpecifier+ declSpecPostType?
+         | IDENT          declSpecPostType?
+         | INLINE         declSpec?
+         ;
+declSpecPostType : storageClass  declSpecPostType?
+                 | typeQualifier declSpecPostType?
+                 | INLINE        declSpecPostType?
+                 ;
 
 // These three entities (variable declarations, function definition parameters and
 // function prototype parameters) are each variations on defining a type. In the 
@@ -64,17 +77,17 @@ typeWrapper : typeSpecifier+
 // is a pure definition without a declaration. Most compilers trap the other cases
 // later. Here the init-decl-list must contain at least one item (even if just an IDENT)
 // with a special case for struct definitions.
-declaration : storageClass? typeQualifier? typeWrapper initDecl (COMMA initDecl)*
-            -> ^(DECL storageClass? typeWrapper typeQualifier? initDecl+)
+declaration : declSpec initDecl (COMMA initDecl)*
+            -> ^(DECL declSpec initDecl+)
             | structSpecifier  
             -> ^(DECL structSpecifier)
             | enumSpecifier
             -> ^(DECL enumSpecifier)
             ;
-protoDecl : typeWrapper STAR* fptrName OPENPAR declPar? CLOSEPAR
-          -> ^(PARAM typeWrapper STAR* fptrName declPar?)
-          |               typeQualifier? typeWrapper STAR* IDENT?
-          -> ^(PARAM typeWrapper typeQualifier? STAR* IDENT?)
+protoDecl : declSpec STAR* fptrName OPENPAR declPar? CLOSEPAR
+          -> ^(PARAM declSpec STAR* fptrName declPar?)
+          |               declSpec STAR* IDENT?
+          -> ^(PARAM declSpec STAR* IDENT?)
           | ELLIPSIS
           -> ^(PARAM ELLIPSIS)
           ;
@@ -102,19 +115,17 @@ declPar     : protoDecl (COMMA protoDecl)* // Prototypes with optional idents
 
 
 
-paramDecl   : typeWrapper STAR* fptrName OPENPAR declPar? CLOSEPAR
-            -> ^(PARAM typeWrapper STAR* fptrName declPar?)
-            |      typeQualifier? typeWrapper STAR* IDENT 
-            -> ^(PARAM typeQualifier? typeWrapper STAR* IDENT)
+paramDecl   : declSpec declarator 
+            -> ^(PARAM declSpec declarator)
             | ELLIPSIS
             -> ^(PARAM ELLIPSIS)
             ;
 
 // Todo: check declSpecs replacement
-functionDef : storageClass? INLINE? typeQualifier? typeWrapper (STAR typeQualifier?)* 
+functionDef : declSpec (STAR typeQualifier?)* 
               IDENT OPENPAR ((paramDecl (COMMA paramDecl)*)? | VOID) CLOSEPAR 
               compoundStmt
-             -> ^(FUNC IDENT compoundStmt paramDecl* storageClass? typeWrapper typeQualifier?)
+             -> ^(FUNC IDENT compoundStmt paramDecl* declSpec)
             ;
 
 // Replaced above?

@@ -12,7 +12,6 @@ Testcase status:
   testcases/gawk-4.0.2/command.c Lex error
   testcases/gawk-4.0.2/debug.c Lex error
   testcases/gawk-4.0.2/dfa.c Lex error
-    Order of const in function parameter.
   testcases/gawk-4.0.2/eval.c Lex error 
   testcases/gawk-4.0.2/eval_d.c Lexs Parses
   testcases/gawk-4.0.2/eval_p.c Lexs Parses
@@ -22,7 +21,6 @@ Testcase status:
   testcases/gawk-4.0.2/gawkmisc.c
   testcases/gawk-4.0.2/getopt1.c
   testcases/gawk-4.0.2/getopt.c
-    Order of const?
   testcases/gawk-4.0.2/io.c
   testcases/gawk-4.0.2/main.c
   testcases/gawk-4.0.2/msg.c
@@ -33,7 +31,7 @@ Testcase status:
     Declarator initialiser not skipping to semi?
   testcases/gawk-4.0.2/re.c
   testcases/gawk-4.0.2/regcomp.c
-    Const order?
+    Doesn't look like a valid funcptr declaration on line 19??
   testcases/gawk-4.0.2/regex.c
   testcases/gawk-4.0.2/regexec.c
   testcases/gawk-4.0.2/regex_internal.c
@@ -41,10 +39,10 @@ Testcase status:
   testcases/gawk-4.0.2/replace.c
   testcases/gawk-4.0.2/version.c
 
-Latest failures: Thu 18 Apr 2013 21:13:45 CEST
+Latest failures: 
 
-dfa.ii  288, 289, 291, 306, 307, 309, 327, 328, 330, 337, 338, 342, 343, 345,
-getopt.ii  105, 107, 109, 113, 115, 116, 118, 120, 121, 123, 124, 126, 97, 98, 99,
-random.ii  36, 37, 39, 43, 45,
+Fri Apr 19 10:19:58 CEST 2013
+
+random.ii  36, 37, 39, 43, 47,
 regcomp.ii  101, 104, 107, 110, 113, 116, 119, 122, 125, 128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 176, 177, 19, 20, 21, 22, 23, 24,
-regex_internal.ii  103, 104, 184, 185, 270, 271, 272, 277, 286, 292, 30, 31, 58, 59,
+regex_internal.ii  103, 1030, 104, 184, 185, 30, 31, 344, 345, 366, 367, 382, 383, 412, 413, 437, 438, 528, 529, 58, 581, 582, 59, 664, 665, 721, 722, 854, 888, 925, 926, 980,
