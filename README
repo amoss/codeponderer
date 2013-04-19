@@ -30,17 +30,10 @@ Testcase status:
   testcases/gawk-4.0.2/random.c
     Old-style K&R function definitions.
   testcases/gawk-4.0.2/re.c
-  testcases/gawk-4.0.2/regcomp.c
-    Doesn't look like a valid funcptr declaration on line 19??
   testcases/gawk-4.0.2/regex.c
-  testcases/gawk-4.0.2/regexec.c
-  testcases/gawk-4.0.2/regex_internal.c
-    More GCC custom attribute syntax
   testcases/gawk-4.0.2/replace.c
   testcases/gawk-4.0.2/version.c
 
-Latest failures: Fri Apr 19 14:17:04 CEST 2013
+Latest failures: Fri Apr 19 14:33:33 CEST 2013
 
 random.ii  47,
-regcomp.ii  101, 104, 107, 110, 113, 116, 119, 122, 125, 128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 176, 177, 19, 20, 21, 22, 23, 24,
-regex_internal.ii  103, 1030, 104, 184, 185, 30, 31, 344, 345, 366, 367, 382, 383, 412, 413, 437, 438, 528, 529, 58, 581, 582, 59, 664, 665, 721, 722, 854, 888, 925, 926, 980,
