@@ -133,9 +133,14 @@ functionDef : declSpec (STAR typeQualifier?)*
 //          -> ^(PARAM declarator declSpecs)
 //          ;
 
-
-initialiser : ASSIGN (constExpr | compoundInit)
-            | ASSIGN (~(SEMI|COMMA))+
+// Need two-level split over balanced parathesis to handle commas in compound initialisers.
+notinit      : ~(SEMI|COMMA|OPENBRA|CLOSEBRA) ; 
+notinitInner : ~(SEMI|OPENBRA|CLOSEBRA) ; 
+anyinit : notinit* (OPENBRA anyinitInside CLOSEBRA)* notinit* ;
+anyinitInside : notinitInner* (OPENBRA anyinitInside CLOSEBRA notinitInner*)* ;
+initialiser //: ASSIGN (constExpr | compoundInit)
+            : ASSIGN anyinit
+            -> ^(ASSIGN anyinit)
             ;
 
 
