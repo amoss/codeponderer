@@ -33,6 +33,7 @@ tokens {
   TYPE;
   DECLPAR;
   FPTR;
+  STATEMENT;
 }
 
 
@@ -126,8 +127,8 @@ paramDecl   : declSpec declarator
 // Todo: check declSpecs replacement
 functionDef : declSpec (STAR typeQualifier?)* 
               IDENT OPENPAR ((paramDecl (COMMA paramDecl)*)? | VOID) CLOSEPAR 
-              compoundStmt
-             -> ^(FUNC IDENT compoundStmt paramDecl* declSpec)
+              OPENBRA statement* CLOSEBRA
+             -> ^(FUNC IDENT ^(OPENBRA statement*) paramDecl* declSpec)
             ;
 
 // Replaced above?
@@ -205,10 +206,27 @@ enumerator : IDENT '=' notenum+
            -> ^(ENUM IDENT)
            ;
 
-notscope : ~(OPENBRA|CLOSEBRA) ;
+notscope  : ~(OPENBRA|CLOSEBRA) ;
 compoundStmt : OPENBRA notscope* (compoundStmt notscope*)* CLOSEBRA 
             -> ^(OPENBRA compoundStmt*) 
              ;
+
+notExpr : ~(OPENPAR|CLOSEPAR);
+expr : OPENPAR notExpr* (expr notExpr*)* CLOSEPAR ;
+
+goop: ~(OPENBRA|CLOSEBRA|SEMI);
+statement : OPENBRA statement* CLOSEBRA
+          | IF expr statement (ELSE statement)?
+          -> ^(IF expr statement statement?)
+          | WHILE expr statement
+          -> ^(WHILE expr statement)
+          | FOR expr statement
+          -> ^(FOR expr statement)
+          | SWITCH expr compoundStmt
+          -> ^(SWITCH expr compoundStmt)
+          | goop+ SEMI
+          -> ^(STATEMENT goop+)
+          ;
 
 
 
@@ -259,6 +277,12 @@ STRUCT   : 'struct';
 UNION    : 'union';
 ENUM     : 'enum';
 
+IF     : 'if';
+ELSE   : 'else';
+WHILE  : 'while';
+FOR    : 'for';
+SWITCH : 'switch';
+
 COMMA : ',' ;
 STAR  : '*' ;
 SEMI  : ';' ;
@@ -294,6 +318,7 @@ WS : (' ' | '\\\n' | '\n' | '\t')+ REPLACEHIDDEN
    ;
 // GNU-c extensions that we simply want to ignore
 GNU : '__attribute' '__'? (' ' | '\t')* '((' ALPHA+ '))' REPLACEHIDDEN ;
+GNUEXPR: '({' (options {greedy=false;}:.)* '})' REPLACEHIDDEN ;
 
 ELLIPSIS : '...';
 ASSRIGHT : '>>=';
