@@ -102,6 +102,7 @@ pANTLR3_COMMON_TOKEN_STREAM tokens;
 pcInCLexer lex;
 pcInCParser parser;
 cInCParser_translationUnit_return retVal;
+cInCParser_declaration_return retVal2;
 
   if( argc==1 )
     ip = antlr3NewAsciiStringInPlaceStream((uint8_t*)testip, strlen(testip), NULL);
@@ -110,8 +111,12 @@ cInCParser_translationUnit_return retVal;
   // Todo: error checking for IO errors !
   lex = cInCLexerNew(ip);
   tokens = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lex));
+  printf("%u\n",tokens->p);
   parser = cInCParserNew(tokens);
   retVal = parser->translationUnit(parser);
+  tokens->p = 0;
+  retVal2 = parser->declaration(parser);
+  dumpTree(retVal2.tree,0);
 
 TranslationU model = TranslationU(retVal.tree);
   model.dump();
