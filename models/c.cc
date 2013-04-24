@@ -437,17 +437,48 @@ char *parseParam(pANTLR3_BASE_TREE node, Type *target)
   return NULL;
 }
 
+/*Expression::Expression( pANTLR3_BASE_TREE node )
+{
+}
+
+Stmt::Stmt( pANTLR3_BASE_TREE node )
+{
+  switch(node->getType(node))
+  {
+    case IF:
+      type = If;
+
+      break;
+    case WHILE:
+      break;
+    case FOR:
+      break;
+    case RETURN:
+      break;
+    default:
+      break;
+  }
+}*/
 
 FuncDef::FuncDef() :
   identifier(NULL)
 {
 }
 
+extern pANTLR3_UINT8   cInCParserTokenNames[];
 void FuncDef::parse(pANTLR3_BASE_TREE node)
 {
 pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
   identifier = (char*)idTok->getText(idTok)->chars;
-pANTLR3_BASE_TREE stmts = (pANTLR3_BASE_TREE)node->getChild(node,1);
+TokList stmts = extractChildren((pANTLR3_BASE_TREE)node->getChild(node,1),0,-1);
+  printf("%u statements in %s\n", stmts.size(), identifier);
+  tmplForeach( list, pANTLR3_BASE_TREE, s, stmts)
+    TokList stmtToks = extractChildren(s,0,-1);
+    tmplForeach( list, pANTLR3_BASE_TREE, t, stmtToks )
+      printf("%s ", cInCParserTokenNames[t->getType(t)]);
+    tmplEnd
+    printf("\n");
+  tmplEnd
   // Skip compound statement for now
 TokList params;
 TokList rest = extractChildren(node,2,-1);

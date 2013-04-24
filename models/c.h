@@ -36,6 +36,20 @@ public:
 
 char *parseParam(pANTLR3_BASE_TREE node, Type *target);
 
+/*class Expression
+{
+  Expression( pANTLR3_BASE_TREE node ) ;
+};
+
+class Stmt
+{
+public:
+  std::list<Stmt*> children;
+  std::list<Expr*> expressions;
+  enum { If, While, For, Return, Other } type;
+  Stmt( pANTLR3_BASE_TREE node );
+};*/
+
 class FuncDef
 {
 public:
