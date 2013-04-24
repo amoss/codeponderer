@@ -57,6 +57,7 @@ public:
   std::list<Decl*> args;
   char *identifier;
   FuncDef();
+  std::list<pANTLR3_BASE_TREE> stmtNodes;
   void parse(pANTLR3_BASE_TREE node);
 };
 
@@ -70,4 +71,14 @@ public:
   {
   }
   const char *what() const throw () { return explain; }
+};
+
+class TranslationU
+{
+public:
+  std::list<Decl*> globals;
+  std::list<FuncDef*> functions;
+  TranslationU(pANTLR3_BASE_TREE root);
+  void processTopLevel(pANTLR3_BASE_TREE node);
+  void dump();
 };

@@ -473,7 +473,10 @@ pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
 TokList stmts = extractChildren((pANTLR3_BASE_TREE)node->getChild(node,1),0,-1);
   printf("%u statements in %s\n", stmts.size(), identifier);
   tmplForeach( list, pANTLR3_BASE_TREE, s, stmts)
+    stmtNodes.push_back(s);
+    pANTLR3_COMMON_TOKEN t = s->getToken(s);
     TokList stmtToks = extractChildren(s,0,-1);
+    printf("%s(%u) ", cInCParserTokenNames[s->getType(s)], s->getToken(s)->index);
     tmplForeach( list, pANTLR3_BASE_TREE, t, stmtToks )
       printf("%s ", cInCParserTokenNames[t->getType(t)]);
     tmplEnd
@@ -496,3 +499,74 @@ TokList::iterator child = rest.begin();
     args.push_back(d);
   tmplEnd
 }
+
+TranslationU::TranslationU(pANTLR3_BASE_TREE root)
+{
+  if( root->getType(root)==0 ) 
+  {
+    TokList tops = extractChildren(root, 0, -1);
+    tmplForeach(list, pANTLR3_BASE_TREE, tok, tops)
+      processTopLevel(tok);
+    tmplEnd
+  }
+  else
+    processTopLevel(root);
+}
+
+void TranslationU::processTopLevel(pANTLR3_BASE_TREE node)
+{
+int type  = node->getType(node);
+int count = node->getChildCount(node);
+  switch(type)
+  {
+    case PREPRO:
+    //case HASHINCLUDE:
+    //case HASHDEFINE:
+    //case HASHUNDEF:
+      break;
+    case DECL:
+      try {
+        Decl::parse(node,globals);
+      }
+      catch(BrokenTree bt) {
+        printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
+        dumpTree(bt.blame,1);
+      }
+      break;
+    case FUNC:
+      try
+      {
+        FuncDef *f = new FuncDef;
+        f->parse(node);
+        functions.push_back(f);
+      }
+      catch(BrokenTree bt) {
+        printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
+        dumpTree(bt.blame,1);
+      }
+      break;
+    case SEMI:
+      break;
+    default:
+      printf("Unknown Type %u Children %u ", type, count);
+      dumpTree(node,1);
+      break;
+  }
+}
+
+void TranslationU::dump()
+{
+  tmplForeach(list,Decl*,decl,globals)  
+    printf("Declation: %s is %s\n", decl->identifier, decl->type.str().c_str());
+  tmplEnd
+  tmplForeach(list,FuncDef*,f,functions)  
+    printf("Function: %s is ", f->identifier);
+    printf("%s <- ", f->retType.str().c_str());
+    tmplForeach(list,Decl*,p,f->args)
+      printf("%s ", p->type.str().c_str());
+      printf("%s  ", p->identifier);
+    tmplEnd
+    printf("\n");
+  tmplEnd
+}
+

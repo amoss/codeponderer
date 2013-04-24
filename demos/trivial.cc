@@ -14,86 +14,7 @@ int getChildType(pANTLR3_BASE_TREE parent, int idx)
   return child->getType(child);
 }
 
-
-class TranslationU
-{
-public:
-  list<Decl*> globals;
-  list<FuncDef*> functions;
-  TranslationU(pANTLR3_BASE_TREE root);
-  void processTopLevel(pANTLR3_BASE_TREE node);
-  void dump();
-};
-
-TranslationU::TranslationU(pANTLR3_BASE_TREE root)
-{
-  if( root->getType(root)==0 ) 
-  {
-    TokList tops = extractChildren(root, 0, -1);
-    tmplForeach(list, pANTLR3_BASE_TREE, tok, tops)
-      processTopLevel(tok);
-    tmplEnd
-  }
-  else
-    processTopLevel(root);
-}
-
-void TranslationU::processTopLevel(pANTLR3_BASE_TREE node)
-{
-int type  = node->getType(node);
-int count = node->getChildCount(node);
-  switch(type)
-  {
-    case PREPRO:
-    //case HASHINCLUDE:
-    //case HASHDEFINE:
-    //case HASHUNDEF:
-      break;
-    case DECL:
-      try {
-        Decl::parse(node,globals);
-      }
-      catch(BrokenTree bt) {
-        printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
-        dumpTree(bt.blame,1);
-      }
-      break;
-    case FUNC:
-      try
-      {
-        FuncDef *f = new FuncDef;
-        f->parse(node);
-        functions.push_back(f);
-      }
-      catch(BrokenTree bt) {
-        printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
-        dumpTree(bt.blame,1);
-      }
-      break;
-    case SEMI:
-      break;
-    default:
-      printf("Unknown Type %u Children %u ", type, count);
-      dumpTree(node,1);
-      break;
-  }
-}
-
-void TranslationU::dump()
-{
-  tmplForeach(list,Decl*,decl,globals)  
-    printf("Declation: %s is %s\n", decl->identifier, decl->type.str().c_str());
-  tmplEnd
-  tmplForeach(list,FuncDef*,f,functions)  
-    printf("Function: %s is ", f->identifier);
-    printf("%s <- ", f->retType.str().c_str());
-    tmplForeach(list,Decl*,p,f->args)
-      printf("%s ", p->type.str().c_str());
-      printf("%s  ", p->identifier);
-    tmplEnd
-    printf("\n");
-  tmplEnd
-}
+extern pANTLR3_UINT8   cInCParserTokenNames[];
 
 int main(int argc, char **argv)
 {
@@ -114,12 +35,42 @@ cInCParser_declaration_return retVal2;
   printf("%u\n",tokens->p);
   parser = cInCParserNew(tokens);
   retVal = parser->translationUnit(parser);
-  tokens->p = 0;
-  retVal2 = parser->declaration(parser);
-  dumpTree(retVal2.tree,0);
 
 TranslationU model = TranslationU(retVal.tree);
   model.dump();
   dumpTree(retVal.tree,0);
 
+  pANTLR3_VECTOR vec = tokens->getTokens(tokens);
+  printf("%u\n", vec->elementsSize);
+  for(int i=0; i<vec->elementsSize; i++)
+  {
+    pANTLR3_COMMON_TOKEN t = (pANTLR3_COMMON_TOKEN) vec->get(vec,i);
+    if(t!=NULL)
+      printf("%s(%u) ", cInCParserTokenNames[t->getType(t)], t->index);
+  }
+
+  tmplForeach(list, FuncDef*, f, model.functions)
+    tmplForeach(list, pANTLR3_BASE_TREE, s, f->stmtNodes)
+      // First token within the statement (virtual tokens have no position in the 
+      // input stream)
+      pANTLR3_COMMON_TOKEN tok;
+      if( s->getType(s) == STATEMENT)
+      {
+        pANTLR3_BASE_TREE node2 = (pANTLR3_BASE_TREE)s->getChild(s,0);
+        tok = node2->getToken(node2);
+      }
+      else
+        tok = s->getToken(s);
+      printf("index %u\n", tok->index);
+      printf("token index %u\n", tok->getTokenIndex(tok));
+      printf("start index %u\n", tok->getStartIndex(tok));
+      printf("stop index %u\n", tok->getStopIndex(tok));
+      tokens->p = tok->getTokenIndex(tok);
+      printf("Checking index %u\n",tokens->p);
+      retVal2 = parser->declaration(parser);
+      if( retVal2.tree->getType(retVal2.tree) == DECL )
+        dumpTree(retVal2.tree,0);
+    tmplEnd
+  tmplEnd
+  
 }
