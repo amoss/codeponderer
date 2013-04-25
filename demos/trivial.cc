@@ -15,6 +15,9 @@ int getChildType(pANTLR3_BASE_TREE parent, int idx)
 }
 
 extern pANTLR3_UINT8   cInCParserTokenNames[];
+void dropError(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8 * tokenNames)
+{
+}
 
 int main(int argc, char **argv)
 {
@@ -37,8 +40,12 @@ cInCParser_declaration_return retVal2;
   retVal = parser->translationUnit(parser);
 
 TranslationU model = TranslationU(retVal.tree);
+  model.buildSymbolTable();
   model.dump();
   dumpTree(retVal.tree,0);
+
+  // Dynamic overloading to prevent display of errors during speculation
+  parser->pParser->rec->displayRecognitionError = dropError;
 
   pANTLR3_VECTOR vec = tokens->getTokens(tokens);
   printf("%u\n", vec->elementsSize);
@@ -61,15 +68,23 @@ TranslationU model = TranslationU(retVal.tree);
       }
       else
         tok = s->getToken(s);
-      printf("index %u\n", tok->index);
-      printf("token index %u\n", tok->getTokenIndex(tok));
-      printf("start index %u\n", tok->getStartIndex(tok));
-      printf("stop index %u\n", tok->getStopIndex(tok));
+      //printf("index %u\n", tok->index);
+      //printf("token index %u\n", tok->getTokenIndex(tok));
+      //printf("start index %u\n", tok->getStartIndex(tok));
+      //printf("stop index %u\n", tok->getStopIndex(tok));
       tokens->p = tok->getTokenIndex(tok);
-      printf("Checking index %u\n",tokens->p);
+      //printf("Checking index %u\n",tokens->p);
       retVal2 = parser->declaration(parser);
       if( retVal2.tree->getType(retVal2.tree) == DECL )
+      {
+        // True iff IDENTs were valid typenames
         dumpTree(retVal2.tree,0);
+      }
+      else 
+      {
+        // Must be a statement if they were not.
+        dumpTree(s,0);
+      }
     tmplEnd
   tmplEnd
   

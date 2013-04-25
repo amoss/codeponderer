@@ -570,3 +570,28 @@ void TranslationU::dump()
   tmplEnd
 }
 
+void TranslationU::buildSymbolTable()
+{
+  table = new SymbolTable;
+  // Build canonical types
+  // Resolve typenames in Types
+  tmplForeach(list, Decl*, d, globals)
+    string s = d->identifier;
+    if( d->type.isTypedef )
+      table->typedefs[s] = &d->type;
+    else
+    {
+      if( d->type.primType == TYPEDEF )
+      {
+        printf("Resolve %s\n", d->type.typedefName);
+        map<string,Type*>::iterator it = table->typedefs.find(d->type.typedefName);
+        if( it==table->typedefs.end() )
+          printf("Can't Resolve\n");
+        else {
+          printf("Resolved:", (it->second)->str().c_str());
+        }
+      }
+      table->symbols[s] = &d->type;
+    }
+  tmplEnd
+}
