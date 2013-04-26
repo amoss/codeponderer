@@ -58,6 +58,14 @@ public:
 
 };
 
+class SymbolTable;
+class Function
+{
+public:
+  FuncType type;
+  SymbolTable *scope;
+};
+
 // Merged ST for all headers
 // TU level ST for globals
 // One ST per block
@@ -68,7 +76,8 @@ public:
   SymbolTable *parent;
   std::map< std::string,DataType* > symbols;
   std::map< std::string,DataType* > typedefs;
-  std::map< std::string,FuncType* > functions;
+  std::map< std::string,Function* > functions;  // Function definitions in this scope
+  std::map< std::string,FuncType* > funcRefs;   // Function types (ie pointers in this scope)
   /* As the above maps are defined over pointers we need a canonical address for a given type
      (no multiple copies even when types are aliased by multiple identifiers). The set container
      is guaranteed to be stable (references/iterators) wrt to insertion so we can use it as a

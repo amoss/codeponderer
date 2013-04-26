@@ -17,9 +17,6 @@ int main(int argc, char **argv)
 {
 
 TranslationU model = parseUnit(argv[1]);
-  model.buildSymbolTable();
-  model.dump();
-  //dumpTree(retVal.tree,0);
-
+  model.table->dump();
   
 }

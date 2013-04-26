@@ -66,10 +66,12 @@ declSpec : storageClass   declSpec?
          | typeSpecifier+ declSpecPostType?
          | IDENT          declSpecPostType?
          | INLINE         declSpec?
+         | '__inline'     declSpec?
          ;
 declSpecPostType : storageClass  declSpecPostType?
                  | typeQualifier declSpecPostType?
                  | INLINE        declSpecPostType?
+                 | '__inline'    declSpecPostType?
                  ;
 
 // These three entities (variable declarations, function definition parameters and
@@ -84,12 +86,13 @@ declaration : declSpec initDecl (COMMA initDecl)*
             -> ^(DECL structSpecifier)
             | enumSpecifier
             -> ^(DECL enumSpecifier)
+            | declSpec COLON NUM    
             ;
 protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
           -> ^(PARAM declSpec STAR* fptrName ^(DECLPAR declPar) ) 
           | declSpec STAR* fptrName OPENPAR CLOSEPAR
           -> ^(PARAM declSpec STAR* fptrName ) 
-          |               declSpec STAR* IDENT?
+          |               declSpec STAR* typeQualifier? IDENT? (OPENSQ notsq* CLOSESQ)?
           -> ^(PARAM declSpec STAR* IDENT?)
           | ELLIPSIS
           ;
@@ -110,6 +113,7 @@ declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for s
             //| OPENSQ constExpr? CLOSESQ        // Arrays
             | OPENSQ notsq* CLOSESQ        // Arrays
             -> ^(OPENSQ notsq* CLOSESQ)
+            | COLON NUM   // Only valid inside bitfields, not generally
             ;
 declPar     : protoDecl (COMMA protoDecl)* // Prototypes with optional idents
             -> protoDecl+
@@ -170,6 +174,8 @@ typeSpecifier : VOID
               ;
 
 typeQualifier : CONST
+              | '__const'
+              | '__restrict'
               | VOLATILE
               ;
 
@@ -226,6 +232,7 @@ statement : OPENBRA statement* CLOSEBRA
           -> ^(SWITCH expr compoundStmt)
           | goop+ SEMI
           -> ^(STATEMENT goop+)
+          | PREPRO
           ;
 
 
@@ -245,6 +252,13 @@ fragment ALPHA : 'a'..'z'
                | 'A'..'Z'
                | '_'
                ;
+// GNU-c extensions that we simply want to ignore
+GNU : '__attribute' '__'? (' ' | '\t')* '((' GNUbra '))' REPLACEHIDDEN ;
+fragment GNUbra: (~('('|')') )* ( '(' GNUbra ')' )?;
+GNUEXPR: '({' (options {greedy=false;}:.)* '})' REPLACEHIDDEN ;
+GNUext : '__extension__' REPLACEHIDDEN ;
+
+ASM: '__asm__' WS* '(' STR ')' REPLACEHIDDEN;
 
 OPENPAR  : '(' ;
 CLOSEPAR : ')' ;
@@ -316,9 +330,6 @@ COM : '/' '/' (~'\n')* '\n' REPLACEHIDDEN
     ;
 WS : (' ' | '\\\n' | '\n' | '\t')+ REPLACEHIDDEN
    ;
-// GNU-c extensions that we simply want to ignore
-GNU : '__attribute' '__'? (' ' | '\t')* '((' ALPHA+ '))' REPLACEHIDDEN ;
-GNUEXPR: '({' (options {greedy=false;}:.)* '})' REPLACEHIDDEN ;
 
 ELLIPSIS : '...';
 ASSRIGHT : '>>=';

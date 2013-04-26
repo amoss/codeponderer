@@ -96,6 +96,19 @@ void convertDecls(list<Decl*> &src, SymbolTable *target)
   tmplEnd
 }
 
+void dumpTokenStream(pANTLR3_COMMON_TOKEN_STREAM tokens)
+{
+  pANTLR3_VECTOR vec = tokens->getTokens(tokens);
+  printf("%u\n", vec->elementsSize);
+  for(int i=0; i<vec->elementsSize; i++)
+  {
+    pANTLR3_COMMON_TOKEN t = (pANTLR3_COMMON_TOKEN) vec->get(vec,i);
+    if(t!=NULL)
+      printf("%s(%u) ", cInCParserTokenNames[t->getType(t)], t->index);
+  }
+  printf("\n");
+}
+
 TranslationU parseUnit(char *filename)
 {
 pANTLR3_INPUT_STREAM ip;
@@ -134,25 +147,18 @@ list<FuncDef*> functions;
   }
 
 // Build the top-level symbol table 
-  SymbolTable *st = new SymbolTable;
-  convertDecls(globals,st);
-  st->dump();
+TranslationU result;
+  convertDecls(globals,result.table);
 
 /* Second pass: check function statements to see if any were declarations that are legal in the context
                 of the outer symbol table + the function symbol table as it is built. */
   // Dynamic overloading to prevent display of errors during speculation
   parser->pParser->rec->displayRecognitionError = dropError;
-
-  pANTLR3_VECTOR vec = tokens->getTokens(tokens);
-  printf("%u\n", vec->elementsSize);
-  for(int i=0; i<vec->elementsSize; i++)
-  {
-    pANTLR3_COMMON_TOKEN t = (pANTLR3_COMMON_TOKEN) vec->get(vec,i);
-    if(t!=NULL)
-      printf("%s(%u) ", cInCParserTokenNames[t->getType(t)], t->index);
-  }
+  dumpTokenStream(tokens);
 
   tmplForeach(list, FuncDef*, f, functions)
+    // Add a new Function to the SymbolTable...
+
     tmplForeach(list, pANTLR3_BASE_TREE, s, f->stmtNodes)
       // First token within the statement (virtual tokens have no position in the 
       // input stream)
@@ -164,12 +170,7 @@ list<FuncDef*> functions;
       }
       else
         tok = s->getToken(s);
-      //printf("index %u\n", tok->index);
-      //printf("token index %u\n", tok->getTokenIndex(tok));
-      //printf("start index %u\n", tok->getStartIndex(tok));
-      //printf("stop index %u\n", tok->getStopIndex(tok));
       tokens->p = tok->getTokenIndex(tok);
-      //printf("Checking index %u\n",tokens->p);
       retVal2 = parser->declaration(parser);
       if( retVal2.tree->getType(retVal2.tree) == DECL )
       {
@@ -180,7 +181,7 @@ list<FuncDef*> functions;
           Decl::parse(retVal2.tree, vars);
           bool failed = false;
           tmplForeach(list, Decl*, v, vars)
-            if(!testConvertDecl(v,st))      // st should be const during this loop
+            if(!testConvertDecl(v, result.table))      // st should be const during this loop
               failed = true;
           tmplEnd
           if(!failed)
@@ -208,4 +209,5 @@ list<FuncDef*> functions;
       }
     tmplEnd
   tmplEnd
+  return result;
 }

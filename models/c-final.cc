@@ -71,6 +71,11 @@ map<string,DataType*>::iterator it;
     printf("Type: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
 }
 
+TranslationU::TranslationU()
+{
+  table = new SymbolTable;
+}
+
 void TranslationU::dump()
 {
 /*
