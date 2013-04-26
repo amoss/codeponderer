@@ -76,30 +76,3 @@ public:
   }
   const char *what() const throw () { return explain; }
 };
-
-// Merged ST for all headers
-// TU level ST for globals
-// One ST per block
-
-class SymbolTable
-{
-public:
-  SymbolTable *parent;
-  std::map< std::string,Type* > symbols;        // Overlap Decl ...
-  std::map< std::string,Type* > typedefs;
-  std::map< std::string,FuncDef* > functions;
-  // Canonical set of Types used in the ST (ie will also be owner of alised objects)
-};
-
-class TranslationU
-{
-public:
-  std::list<Decl*> globals;       // Used during first parse before building ST
-  std::list<FuncDef*> functions;        // Used during first parse before building ST
-  SymbolTable *table;
-
-  TranslationU(pANTLR3_BASE_TREE root);
-  void processTopLevel(pANTLR3_BASE_TREE node);
-  void dump();
-  void buildSymbolTable();
-};
