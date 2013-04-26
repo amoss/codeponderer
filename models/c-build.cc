@@ -62,6 +62,30 @@ DataType result;
   return result;
 }
 
+void convertDecls(list<Decl*> &src, SymbolTable *target)
+{
+  tmplForeach(list, Decl*, d, src)
+    // Resolve the typename with a lookup in the typedef namespace
+    if(d->type.primType == TYPEDEF)
+    {
+      map<string,DataType*>::iterator it = target->typedefs.find(d->type.typedefName);
+      if( it==target->typedefs.end() )
+        printf("Unknown type! %s\n", d->type.typedefName);
+      else
+        target->symbols[d->identifier] = it->second;
+    }
+    else 
+    {
+      // Convert representation and lookup canonical DataType by value.
+      DataType *canon = target->getCanon( typeConvert(&d->type) );
+      if(d->type.isTypedef )
+        target->typedefs[d->identifier] = canon;
+      else
+        target->symbols[d->identifier] = canon;
+    }
+  tmplEnd
+}
+
 TranslationU parseUnit(char *filename)
 {
 pANTLR3_INPUT_STREAM ip;
@@ -99,26 +123,10 @@ list<FuncDef*> functions;
     dumpTree(bt.blame,1);
   }
 
-  SymbolTable *st = new SymbolTable;
 // Build the top-level symbol table 
-  tmplForeach(list, Decl*, d, globals)
-    if(d->type.primType == TYPEDEF)
-      printf("HO %s\n", d->type.str().c_str());
-    else if(d->type.isTypedef )
-      printf("YO %s\n", d->type.str().c_str());
-    else
-    {
-      DataType t = typeConvert(&d->type);
-      DataType *canon = st->getCanon(t);
-      st->symbols[d->identifier] = canon;
-    }
-  tmplEnd
+  SymbolTable *st = new SymbolTable;
+  convertDecls(globals,st);
   st->dump();
-
-  printf("Cannon %u\n", st->canon.size());
-  tmplForeach(set, DataType, t, st->canon)
-    t.dump();
-  tmplEnd
 
 /* Second pass: check function statements to see if any were declarations that are legal in the context
                 of the outer symbol table + the function symbol table as it is built. */

@@ -1,4 +1,7 @@
+#include<list>
+#include<sstream>
 #include "models/c-final.h"
+#include "models/util.h"
 #include<stdio.h>
 
 using namespace std;
@@ -7,46 +10,49 @@ bool compareFT(FuncType const &a, FuncType const &b)
 {
 }
 
-void DataType::dump()
+string DataType::str()
 {
+  list<string> parts;
   if(isUnsigned)
-    printf("unsigned ");
+    parts.push_back("unsigned");
   switch(primitive)
   {
     case DataType::Int:
-      printf("int ");
+      parts.push_back("int");
       break;
     case DataType::Long:
-      printf("long ");
+      parts.push_back("long");
       break;
     case DataType::Char:
-      printf("char ");
+      parts.push_back("char");
       break;
     case DataType::Float:
-      printf("float ");
+      parts.push_back("float");
       break;
     case DataType::Double:
-      printf("double ");
+      parts.push_back("double");
       break;
     case DataType::Short:
-      printf("short ");
+      parts.push_back("short");
       break;
     case DataType::Struct:
-      printf("struct ");
+      parts.push_back("struct");
       break;
     case DataType::Union:
-      printf("union ");
+      parts.push_back("union");
       break;
     case DataType::Enum:
-      printf("enum ");
+      parts.push_back("enum");
       break;
     case DataType::Func:
-      printf("func ");
+      parts.push_back("func");
       break;
   }
+  stringstream res;
+  res << joinStrings(parts,' ');
   for(int i=0; i<stars; i++)
-    printf("*");
-  printf("\n");
+    res << "*" ;
+  return res.str();
 }
 
 DataType *SymbolTable::getCanon(DataType const &src)
@@ -60,10 +66,9 @@ void SymbolTable::dump()
 {
 map<string,DataType*>::iterator it;
   for(it=symbols.begin(); it!=symbols.end(); ++it)
-  {
-    printf("Decl: %s -> %lx\n", it->first.c_str(), it->second);
-    it->second->dump();
-  }
+    printf("Decl: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+  for(it=typedefs.begin(); it!=typedefs.end(); ++it)
+    printf("Type: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
 }
 
 void TranslationU::dump()

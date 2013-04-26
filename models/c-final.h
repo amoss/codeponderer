@@ -17,7 +17,7 @@ public:
   int  stars;
   int  array;
   FuncType *fptr;
-  void dump();
+  std::string str();
 };
 
 // Arbitrary ordering for Type objects that models equality for set-inclusion
