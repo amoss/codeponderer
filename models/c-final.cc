@@ -1,30 +1,69 @@
 #include "models/c-final.h"
-// Arbitrary ordering for Type objects that models equality for set-inclusion
-bool compareDT(DataType const &a, DataType const &b)
-{
-  if(a.primitive < b.primitive)
-    return true;
-  if(b.primitive < a.primitive)
-    return false;
-  if(a.stars < b.stars)
-    return true;
-  if(b.stars < a.stars)
-    return false;
-  if(a.isSigned && !b.isSigned)
-    return true;
-  if(!a.isSigned && b.isSigned)
-    return false;
-  if(a.array < b.array)
-    return true;
-  if(b.array < a.array)
-    return false;
-  if(a.primitive!=DataType::Func)
-    return false;
-  return compareFT(*a.fptr, *b.fptr);
-}
+#include<stdio.h>
+
+using namespace std;
 
 bool compareFT(FuncType const &a, FuncType const &b)
 {
+}
+
+void DataType::dump()
+{
+  if(isUnsigned)
+    printf("unsigned ");
+  switch(primitive)
+  {
+    case DataType::Int:
+      printf("int ");
+      break;
+    case DataType::Long:
+      printf("long ");
+      break;
+    case DataType::Char:
+      printf("char ");
+      break;
+    case DataType::Float:
+      printf("float ");
+      break;
+    case DataType::Double:
+      printf("double ");
+      break;
+    case DataType::Short:
+      printf("short ");
+      break;
+    case DataType::Struct:
+      printf("struct ");
+      break;
+    case DataType::Union:
+      printf("union ");
+      break;
+    case DataType::Enum:
+      printf("enum ");
+      break;
+    case DataType::Func:
+      printf("func ");
+      break;
+  }
+  for(int i=0; i<stars; i++)
+    printf("*");
+  printf("\n");
+}
+
+DataType *SymbolTable::getCanon(DataType const &src)
+{
+  canon.insert(src);
+  set<DataType,DtComp>::iterator it = canon.find(src);
+  return (DataType*)&(*it);
+}
+
+void SymbolTable::dump()
+{
+map<string,DataType*>::iterator it;
+  for(it=symbols.begin(); it!=symbols.end(); ++it)
+  {
+    printf("Decl: %s -> %lx\n", it->first.c_str(), it->second);
+    it->second->dump();
+  }
 }
 
 void TranslationU::dump()

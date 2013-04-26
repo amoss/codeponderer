@@ -14,18 +14,11 @@ int count = node->getChildCount(node);
     case DECL:
       Decl::parse(node,globals);
       break;
-
-      break;
     case FUNC:
-      try
       {
         FuncDef *f = new FuncDef;
         f->parse(node);
         functions.push_back(f);
-      }
-      catch(BrokenTree bt) {
-        printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
-        dumpTree(bt.blame,1);
       }
       break;
     default:
@@ -38,6 +31,35 @@ int count = node->getChildCount(node);
 extern pANTLR3_UINT8   cInCParserTokenNames[];
 void dropError(pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT8 * tokenNames)
 {
+}
+
+DataType typeConvert(Type *orig)
+{
+DataType result;
+  switch(orig->primType)
+  {
+    case DOUBLE:
+      result.primitive = DataType::Double;
+      break;
+    case FLOAT:
+      result.primitive = DataType::Float;
+      break;
+    case CHAR:
+      result.primitive = DataType::Char;
+      break;
+    case SHORT:
+      result.primitive = DataType::Short;
+      break;
+    case LONG:
+      result.primitive = DataType::Long;
+      break;
+    case INT:
+      result.primitive = DataType::Int;
+      break;
+  }
+  result.isUnsigned = orig->isUnsigned;
+  result.stars      = orig->stars;
+  return result;
 }
 
 TranslationU parseUnit(char *filename)
@@ -77,7 +99,26 @@ list<FuncDef*> functions;
     dumpTree(bt.blame,1);
   }
 
+  SymbolTable *st = new SymbolTable;
 // Build the top-level symbol table 
+  tmplForeach(list, Decl*, d, globals)
+    if(d->type.primType == TYPEDEF)
+      printf("HO %s\n", d->type.str().c_str());
+    else if(d->type.isTypedef )
+      printf("YO %s\n", d->type.str().c_str());
+    else
+    {
+      DataType t = typeConvert(&d->type);
+      DataType *canon = st->getCanon(t);
+      st->symbols[d->identifier] = canon;
+    }
+  tmplEnd
+  st->dump();
+
+  printf("Cannon %u\n", st->canon.size());
+  tmplForeach(set, DataType, t, st->canon)
+    t.dump();
+  tmplEnd
 
 /* Second pass: check function statements to see if any were declarations that are legal in the context
                 of the outer symbol table + the function symbol table as it is built. */
