@@ -62,6 +62,16 @@ DataType result;
   return result;
 }
 
+bool testConvertDecl(Decl *d, SymbolTable *target)
+{
+  if( d->type.primType != TYPEDEF )
+    return true;
+  map<string,DataType*>::iterator it = target->typedefs.find(d->type.typedefName);
+  if( it==target->typedefs.end() )
+    return false;
+  return true;
+}
+
 void convertDecls(list<Decl*> &src, SymbolTable *target)
 {
   tmplForeach(list, Decl*, d, src)
@@ -142,8 +152,7 @@ list<FuncDef*> functions;
       printf("%s(%u) ", cInCParserTokenNames[t->getType(t)], t->index);
   }
 
-  /* Not built yet...
-  tmplForeach(list, FuncDef*, f, model.functions)
+  tmplForeach(list, FuncDef*, f, functions)
     tmplForeach(list, pANTLR3_BASE_TREE, s, f->stmtNodes)
       // First token within the statement (virtual tokens have no position in the 
       // input stream)
@@ -164,15 +173,39 @@ list<FuncDef*> functions;
       retVal2 = parser->declaration(parser);
       if( retVal2.tree->getType(retVal2.tree) == DECL )
       {
-        // True iff IDENTs were valid typenames
-        dumpTree(retVal2.tree,0);
+        // True iff all IDENTs were valid typenames (or primitives)
+        // TODO: will not handle local typedefs, but must ensure that the SymbolTable update is atomic
+        list<Decl*> vars;
+        try {
+          Decl::parse(retVal2.tree, vars);
+          bool failed = false;
+          tmplForeach(list, Decl*, v, vars)
+            if(!testConvertDecl(v,st))      // st should be const during this loop
+              failed = true;
+          tmplEnd
+          if(!failed)
+          {
+            printf("Statement valid as DECL:\n");
+            dumpTree(retVal2.tree,0);
+          }
+          else
+          {
+            printf("Statement rejected as DECL\n");
+            dumpTree(s,0);
+          }
+        }
+        catch(BrokenTree bt)
+        {
+          printf("Exception in DECL processing - must be statement\n");
+          dumpTree(s,0);
+        }
       }
       else 
       {
+        printf("Non-generic statement - can't be DECL\n");
         // Must be a statement if they were not.
         dumpTree(s,0);
       }
     tmplEnd
   tmplEnd
-  */
 }
