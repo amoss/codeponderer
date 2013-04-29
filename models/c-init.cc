@@ -7,6 +7,7 @@ void partitionList(list<pANTLR3_BASE_TREE> src, list<pANTLR3_BASE_TREE> &yes, li
 template<pANTLR3_BASE_TREE>
 void takeWhile(list<pANTLR3_BASE_TREE>::iterator &it, list<pANTLR3_BASE_TREE>::iterator end, list<pANTLR3_BASE_TREE> &target, bool (*predicate)(pANTLR3_BASE_TREE));
 
+/*REWRITE
 Type::Type( ) :
   isStatic(false), isExtern(false), isTypedef(false), isAuto(false), isUnsigned(false),
   isFunction(false), isRegister(false), isConst(false), primType(-1), stars(0), array(0),
@@ -25,6 +26,10 @@ Type::Type( list<pANTLR3_BASE_TREE>::iterator start, list<pANTLR3_BASE_TREE>::it
   parse(start,end);
 }
 
+
+// Called from processing a  ^(DECL declSpec initDecl+)
+//    declSpec contains storageClass, typeQualifier, typeSpecifier, IDENTs, INLINE keywords.
+//    TokList was the tokens upto the first initDecl (DECL).
 void Type::parse(TokList::iterator start, TokList::iterator end)
 {
   while(start!=end)
@@ -55,6 +60,8 @@ void Type::parse(TokList::iterator start, TokList::iterator end)
         typedefName = (char*)tok->getText(tok)->chars;
         break;
       case STRUCT:
+        printf("Type::parse(STRUCT)\n");
+        dumpTree(tok,1);
         // If there is an IDENT inside then store the name, else anonymous
         // Build the field list by parsing the declarations
         isStruct = true;
@@ -178,11 +185,13 @@ bool isNotDecl(pANTLR3_BASE_TREE tok)
 {
   return tok->getType(tok) != DECL;
 }
+*/
 
 /* The subtree for a DECL can contain multiple declarations in a comma-separated
    list. The initial children specify the type, these will be cloned into every
    Decl produced. The results are appended to the list<Decl*> passed in.
 */
+/*REWRITE
 void Decl::parse(pANTLR3_BASE_TREE node, list<Decl*> &results)
 {
   TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
@@ -193,26 +202,7 @@ void Decl::parse(pANTLR3_BASE_TREE node, list<Decl*> &results)
 // wrapped inside DECL nodes (one for each dtor in the declaration). 
   Type baseType(typeToks.begin(), typeToks.end());    // Each dtor can contain stars or prototypes.
 
-  /*printf("typeToks: ");
-  printTokList(typeToks);
-  printf("dtorToks: ");
-  printTokList(dtorToks);*/
 
-  // If no valid typeSpecifier then expect an IDENT inside the type part.
-  /*  Moved into Type::parse
-      means that all IDENTS in the type block will be treated as typedef'd names
-  if(baseType.primType==-1)
-  {
-    tmplForeach(list, pANTLR3_BASE_TREE, tok, typeToks)
-      if( tok->getType(tok)==IDENT )
-      {
-        baseType.typedefName = (char*)tok->getText(tok)->chars;
-        baseType.primType = TYPEDEF;
-      }
-    tmplEnd
-    if( baseType.typedefName == NULL)
-      printf("Invalid type specification - no primitive or typedef supplied\n");
-  }*/
 
   tmplForeach(list,pANTLR3_BASE_TREE,dtor,dtorToks)
     Decl *d = new Decl(baseType);
@@ -285,24 +275,6 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
     {
       case OPENSQ:
         break;
-      /* ********* Leave this out until we parse expressions
-
-
-        if(distance(tokIt,dtorToks.end()) < 2)
-          printf("ERROR: truncated array expression\n");
-        else
-        {
-          ++tokIt;
-          tok = *tokIt;
-          if(tok->getType(tok)!=NUM)
-            printf("ERROR: array bound is unevaluated\n");
-          else
-            type.array = atoi((char*)tok->getText(tok)->chars);
-          // Skip NUM CLOSESQ
-          if(++tokIt==ptrQualToks.end())
-            printf("ERROR: truncated array expression\n");
-        }
-        break;*/
       case ASSIGN:
         return;      // Skip initialiser expressions
       // A parenthesised tail to a declarator
@@ -335,50 +307,14 @@ void Decl::parseInitDtor(pANTLR3_BASE_TREE subTree)
     }
   }
 }
-
-/* This is where we resolve typenames / symbol names. Until now both are flushed down from the
-   grammar as IDENTs. Normally people expend a huge amount of effort on threading a symbol
-   table throughout every rule in the grammar to make sure they can tell these two types of
-   tokens apart (context-sensitive so cannot be handled with a vanilla CFG). Instead we put
-   the complexity in this one place where we can count the IDENTs in a stream and use a simple
-   state machine to do the separation.
 */
-void findTypeTokens(TokList stream, TokList &typeToks, TokList &rest)
-{
-int idCount = 0;
-bool prefix = true;
-  tmplForeach(list, pANTLR3_BASE_TREE, tok, stream)
-    if(prefix)
-    {
-      switch(tok->getType(tok))
-      {
-        case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID: case STRUCT:
-        case SHORT: case ENUM:
-          idCount = 1;    // Pretend we saw the ident
-          break;
-        case UNSIGNED: case AUTO:   case TYPEDEF: case EXTERN: case STATIC:
-        case VOLATILE: case CONST:  
-          break;        // Continue in prefix
-        case IDENT:
-          if( idCount++ > 0 )
-            prefix = false;
-          break;
-        default:
-          prefix = false;
-          break;
-      }
-    }
-    if(prefix)
-      typeToks.push_back(tok);
-    else
-      rest.push_back(tok);
-  tmplEnd
-}
+
 
 /* Parameters are either type signatures (prototypes), or types + names (prototypes and 
    definitions). We can represent the type+name combination as a Decl, and use NULL
    identifiers for the anonymous cases.
 */
+/*REWRITE
 char *parseParam(pANTLR3_BASE_TREE node, Type *target)
 {
   TokList children = extractChildren(node,0,-1);
@@ -436,6 +372,7 @@ char *parseParam(pANTLR3_BASE_TREE node, Type *target)
   }
   return NULL;
 }
+*/
 
 /*Expression::Expression( pANTLR3_BASE_TREE node )
 {
@@ -459,7 +396,7 @@ Stmt::Stmt( pANTLR3_BASE_TREE node )
       break;
   }
 }*/
-
+/*REWRITE
 FuncDef::FuncDef() :
   identifier(NULL)
 {
@@ -486,11 +423,11 @@ TokList stmts = extractChildren((pANTLR3_BASE_TREE)node->getChild(node,1),0,-1);
 TokList params;
 TokList rest = extractChildren(node,2,-1);
 TokList::iterator child = rest.begin();
-  takeWhile( child, rest.end(), params, isParam);
+  //REWRITE ---> moved into build takeWhile( child, rest.end(), params, isParam);
   retType.parse(child, rest.end());
-  /* Once upon a time these parameters were parsed as declarations, back when the world was young and
-     the token stream was flat. But it because necessary to indicate dtor boundaries so that IDENTs
-     could be resolved into symbol names and typedef'd names. Hence the slightly ugly construction here */
+  // Once upon a time these parameters were parsed as declarations, back when the world was young and
+  // the token stream was flat. But it because necessary to indicate dtor boundaries so that IDENTs
+  // could be resolved into symbol names and typedef'd names. Hence the slightly ugly construction here 
   tmplForeach( list, pANTLR3_BASE_TREE, p, params)
     Type dummy;
     char *name = parseParam(p, &dummy);
@@ -499,5 +436,6 @@ TokList::iterator child = rest.begin();
     args.push_back(d);
   tmplEnd
 }
+*/
 
 

@@ -6,17 +6,81 @@
 
 using namespace std;
 
+bool DtComp::operator() (DataType const &a, DataType const &b) const
+{
+static FtComp fc;
+  if(a.primitive < b.primitive)
+    return true;
+  if(b.primitive < a.primitive)
+    return false;
+  if(a.stars < b.stars)
+    return true;
+  if(b.stars < a.stars)
+    return false;
+  if(a.isUnsigned && !b.isUnsigned)
+    return true;
+  if(!a.isUnsigned && b.isUnsigned)
+    return false;
+  if(a.array < b.array)
+    return true;
+  if(b.array < a.array)
+    return false;
+  if(a.primitive!=DataType::Function)
+    return false;
+  return fc(*a.fptr, *b.fptr);
+}
+
+bool FtComp::operator() (FuncType const &a, FuncType const &b) const
+{
+static DtComp dc;
+
+  if(a.nParams < b.nParams)
+    return true;
+  if(a.nParams > b.nParams)
+    return false;
+  if(dc(*a.retType,*b.retType))
+    return true;
+  if(dc(*b.retType,*a.retType))
+    return false;
+  for(int i=0; i<a.nParams; i++)
+  {
+    if(dc(*a.params[i], *b.params[i]))
+      return true;
+    if(dc(*b.params[i], *a.params[i]))
+      return false;
+  }
+  return false;
+}
+
+/* Note: MUST initialise every field that is involved in the comparison otherwise it will
+         produce an unstable ordering for std::set and all hell will break loose!
+*/
+DataType::DataType()
+  : nFields(0), isUnsigned(false), fields(NULL), stars(0), primitive(DataType::Empty), array(0)
+{
+  // To avoid dependencies on c-init the intialisation is handled by the c-build module.
+}
+
 bool compareFT(FuncType const &a, FuncType const &b)
 {
 }
 
-string DataType::str()
+string DataType::str() const
 {
   list<string> parts;
   if(isUnsigned)
     parts.push_back("unsigned");
   switch(primitive)
   {
+    case DataType::Empty:
+      parts.push_back("EMPTY");
+      break;
+    case DataType::Ellipsis:
+      parts.push_back("...");
+      break;
+    case DataType::Void:
+      parts.push_back("void");
+      break;
     case DataType::Int:
       parts.push_back("int");
       break;
@@ -44,27 +108,42 @@ string DataType::str()
     case DataType::Enum:
       parts.push_back("enum");
       break;
-    case DataType::Func:
+    case DataType::Function:
       parts.push_back("func");
+      break;
+    default:
+      printf("Unknown prim %d\n",primitive);
       break;
   }
   stringstream res;
   res << joinStrings(parts,' ');
   for(int i=0; i<stars; i++)
     res << "*" ;
+  if(nFields > 0)
+  {
+    for(int i=0; i<nFields; i++ )
+        res << fields[i]->str() << ";";
+  }
   return res.str();
 }
 
-DataType *SymbolTable::getCanon(DataType const &src)
+const DataType *SymbolTable::getCanon(DataType const &src)
 {
   canon.insert(src);
   set<DataType,DtComp>::iterator it = canon.find(src);
-  return (DataType*)&(*it);
+  return &(*it);
+}
+
+FuncType *SymbolTable::getCanon(FuncType const &src)
+{
+  canonF.insert(src);
+  set<FuncType,FtComp>::iterator it = canonF.find(src);
+  return (FuncType*)&(*it);
 }
 
 void SymbolTable::dump()
 {
-map<string,DataType*>::iterator it;
+map<string,const DataType*>::iterator it;
   for(it=symbols.begin(); it!=symbols.end(); ++it)
     printf("Decl: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
   for(it=typedefs.begin(); it!=typedefs.end(); ++it)

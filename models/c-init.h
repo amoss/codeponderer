@@ -5,6 +5,7 @@
 //   TypeParse : dependencies to ANTLR, unresolved IDENT names
 //   Type      : pure, part of a Type-graph
 
+/*REWRITE
 class Type
 {
 public:
@@ -38,7 +39,9 @@ public:
   void parseInitDtor(pANTLR3_BASE_TREE subTree);
 };
 
+
 char *parseParam(pANTLR3_BASE_TREE node, Type *target);
+*/
 
 /*class Expression
 {
@@ -54,6 +57,7 @@ public:
   Stmt( pANTLR3_BASE_TREE node );
 };*/
 
+/* REWRITE...
 class FuncDef
 {
 public:
@@ -64,6 +68,7 @@ public:
   std::list<pANTLR3_BASE_TREE> stmtNodes;
   void parse(pANTLR3_BASE_TREE node);
 };
+*/
 
 class BrokenTree : public std::exception
 {

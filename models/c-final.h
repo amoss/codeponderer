@@ -1,60 +1,53 @@
 #include <set>
 #include <map>
 #include <string>
-// In a context where typedef int Units;
-// Should there be a distinction between:
-//  int x;
-//  Units y;
-// ?
-// : No - after all there is none in the program.
 
+/* The representation of a type in the program. Note the lack of STL containers, these
+   types are immutable - the only time that fields / functions etc are added is during
+   construction (conversion from the parser structures). Sticking to pointer arrays 
+   and integer counts leads to easier code to read/write than STL iterators. These objects
+   are shallow-copiable as all pointers are canoncial instances owned by the SymbolTable.
+   Empty is a null-object and Ellipsis is a special dummy in the SymbolTable to catch
+   vargs in functions.
+*/
 class FuncType;
 class DataType
 {
 public:
-  enum { Int, Long, Char, Float, Double, Short, Struct, Union, Enum, Func} primitive;
+  enum { Empty, Ellipsis, Int, Long, Char, Float, Double, Short, Struct, Union, Enum, 
+         Void, Function } primitive;
   bool isUnsigned;
-  int  stars;
-  int  array;
+  int  stars, array, nFields;
   FuncType *fptr;
-  std::string str();
+  const DataType **fields;
+  DataType();
+  std::string str() const;
 };
 
 // Arbitrary ordering for Type objects that models equality for set-inclusion
-bool compareFT(FuncType const &a, FuncType const &b);
 class DtComp
 {
 public:
-  bool operator() (DataType const &a, DataType const &b) const
-  {
-    if(a.primitive < b.primitive)
-      return true;
-    if(b.primitive < a.primitive)
-      return false;
-    if(a.stars < b.stars)
-      return true;
-    if(b.stars < a.stars)
-      return false;
-    if(a.isUnsigned && !b.isUnsigned)
-      return true;
-    if(!a.isUnsigned && b.isUnsigned)
-      return false;
-    if(a.array < b.array)
-      return true;
-    if(b.array < a.array)
-      return false;
-    if(a.primitive!=DataType::Func)
-      return false;
-    return compareFT(*a.fptr, *b.fptr);
-  }
+  bool operator() (DataType const &a, DataType const &b) const;
+};
+
+class FtComp
+{
+public:
+  bool operator() (FuncType const &a, FuncType const &b) const;
 };
 
 
+/* All DataType objects referenced in params must be canonical instances owned by a SymbolTable
+   object. It is assumed that FuncTypes can be shallow copied without problems.
+*/
 class FuncType
 {
 public:
-  int numParams;
-  DataType *params;
+  const DataType *retType;
+  int nParams;
+  const DataType **params;
+  std::string    *paramNames;
 
 };
 
@@ -74,8 +67,9 @@ class SymbolTable
 {
 public:
   SymbolTable *parent;
-  std::map< std::string,DataType* > symbols;
-  std::map< std::string,DataType* > typedefs;
+  std::map< std::string,const DataType* > symbols;
+  std::map< std::string,const DataType* > typedefs;
+  std::map< std::string,DataType* > tags;       // Distinct names from typedefs
   std::map< std::string,Function* > functions;  // Function definitions in this scope
   std::map< std::string,FuncType* > funcRefs;   // Function types (ie pointers in this scope)
   /* As the above maps are defined over pointers we need a canonical address for a given type
@@ -83,7 +77,9 @@ public:
      is guaranteed to be stable (references/iterators) wrt to insertion so we can use it as a
      canonical map (i.e. it is the inverse of an array value->unique address) */
   std::set< DataType, DtComp>       canon;
-  DataType *getCanon(DataType const &);
+  std::set< FuncType, FtComp>       canonF;
+  const DataType *getCanon(DataType const &);
+  FuncType *getCanon(FuncType const &);
   void dump();
 };
 

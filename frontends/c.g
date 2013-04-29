@@ -42,6 +42,9 @@ translationUnit : externDecl+
 
 externDecl : functionDef
            | declaration SEMI
+           | unionDef SEMI    // Pure definition (must include tag-name)
+           | structDef SEMI   // Pure definition (must include tag-name)
+           | enumSpecifier SEMI     // Pure definition (defines values)
            | PREPRO
            ;
 
@@ -83,9 +86,9 @@ declSpecPostType : storageClass  declSpecPostType?
 declaration : declSpec initDecl (COMMA initDecl)*
             -> ^(DECL declSpec initDecl+)
             | structSpecifier  
-            -> ^(DECL structSpecifier)
+            -> ^(DECL structSpecifier)      // TODO: Must be wrong, needs initDecl+ ??
             | enumSpecifier
-            -> ^(DECL enumSpecifier)
+            -> ^(DECL enumSpecifier)      // TODO: Must be wrong, needs initDecl+ ??
             | declSpec COLON NUM    
             ;
 protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
@@ -182,6 +185,10 @@ typeQualifier : CONST
 unionSpecifier : UNION IDENT? OPENBRA structDeclList CLOSEBRA
                | UNION IDENT
                ;
+unionDef  :   UNION  IDENT   OPENBRA structDeclList CLOSEBRA 
+         -> ^(UNION  IDENT structDeclList ) ;
+structDef :   STRUCT IDENT   OPENBRA structDeclList CLOSEBRA
+         -> ^(STRUCT IDENT structDeclList ) ;
 
 structSpecifier : STRUCT IDENT? OPENBRA structDeclList CLOSEBRA
                 -> ^(STRUCT IDENT structDeclList)
