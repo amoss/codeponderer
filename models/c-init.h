@@ -1,53 +1,7 @@
 #include <exception>
 #include "models/util.h"
 
-// Split into two versions:
-//   TypeParse : dependencies to ANTLR, unresolved IDENT names
-//   Type      : pure, part of a Type-graph
-
-/*REWRITE
-class Type
-{
-public:
-  bool isStatic, isExtern, isTypedef, isAuto, isRegister, isUnsigned, isFunction, isConst, 
-       isStruct, isEnum;
-  int  primType; 
-  int stars;
-  int array;
-  int nParams;
-  char *typedefName;
-  Type *params;
-  char **paramNames;
-  int nFields;
-  Type *fields;
-  char **fieldNames;
-  Type *retType;
-  Type();
-  Type( TokList::iterator start, TokList::iterator end);
-  void parse(TokList::iterator start, TokList::iterator end);
-  std::string str();
-};
-
-class Decl
-{
-public:
-  Type type;
-  char *identifier;
-
-  Decl(Type &t);
-  static void parse(pANTLR3_BASE_TREE node, std::list<Decl*> &results);
-  void parseInitDtor(pANTLR3_BASE_TREE subTree);
-};
-
-
-char *parseParam(pANTLR3_BASE_TREE node, Type *target);
-*/
-
-/*class Expression
-{
-  Expression( pANTLR3_BASE_TREE node ) ;
-};
-
+/*
 class Stmt
 {
 public:
@@ -57,18 +11,6 @@ public:
   Stmt( pANTLR3_BASE_TREE node );
 };*/
 
-/* REWRITE...
-class FuncDef
-{
-public:
-  Type retType;
-  std::list<Decl*> args;
-  char *identifier;
-  FuncDef();
-  std::list<pANTLR3_BASE_TREE> stmtNodes;
-  void parse(pANTLR3_BASE_TREE node);
-};
-*/
 
 class BrokenTree : public std::exception
 {
