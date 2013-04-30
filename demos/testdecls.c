@@ -62,6 +62,7 @@ int reg(void (*callback)())
 struct a { int crap; } x;
 struct a y;
 struct { char a,b,c; } triple;
+struct triple { char a,b,c; };
 struct { struct a first,second; };
 
 typedef struct 

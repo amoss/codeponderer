@@ -2,7 +2,7 @@
 
 using namespace std;
 
-static void convertDECL(SymbolTable *st, pANTLR3_BASE_TREE node);
+static list<string> convertDECL(SymbolTable *st, pANTLR3_BASE_TREE node);
 static string convertPARAM(SymbolTable *st, pANTLR3_BASE_TREE node, DataType *target);
 
 bool isTypeTok(pANTLR3_BASE_TREE tok)
@@ -129,8 +129,7 @@ DataType result;
 
 // The structure of a record definition is:
 //    ^((STRUCT|UNION) IDENT? DECL*)
-// TODO: Not storing field names or order...
-DataType convertRecord(TranslationU const &where, pANTLR3_BASE_TREE node)
+DataType convertRecord(TranslationU const &where, pANTLR3_BASE_TREE node, string &tag)
 {
 DataType res;
   if( node->getType(node)==STRUCT )
@@ -138,22 +137,35 @@ DataType res;
   else 
     res.primitive = DataType::Union;
 
+  // If there is an IDENT? then process it separately from the DECL loop
 TokList cs = extractChildren(node,0,-1);
-SymbolTable dummy;
+pANTLR3_BASE_TREE first = *cs.begin();
+  if(first->getType(first) == IDENT)
+  {
+    cs.pop_front();
+    tag = (char*)first->getText(first)->chars;
+  }
+
+// When we call convertDECL it needs a SymbolTable to record the basetype+initdecl for each
+// declarator in the declaration. We can't use the real TU table as these declarations exist
+// in the private namespace of the record. To build the DataType that represents the record
+// we can drop the names but we need the declaration DataTypes in the correct order...
+// Type are canonical in private namespace... 
+list<string> order;
+  res.namesp = new SymbolTable; // TODO: Needs parent otherwise typedefs won't be found..
   tmplForeach(list, pANTLR3_BASE_TREE, f, cs)
     if( f->getType(f) == DECL )
     {
-      printf("field\n");
-      convertDECL(&dummy,node);
+      list<string> partial = convertDECL(res.namesp,f);
+      order.splice(order.end(), partial); 
     }
   tmplEnd
-  res.nFields = dummy.symbols.size();
+  res.nFields = res.namesp->symbols.size();
   res.fields  = new const DataType*[res.nFields];
   int idx = 0;
-  // TODO: Fields will be in the wrong order iterating out of a map
-  map<string,const DataType*>::iterator it = dummy.symbols.begin();
-  for(; it!=dummy.symbols.end(); ++it)
-    res.fields[idx++] = it->second;     // Cannonical for wrong table?!?
+  tmplForeach(list, string, name, order)
+    res.fields[idx++] = res.namesp->symbols[name];
+  tmplEnd
   return res;
 }
 
@@ -288,11 +300,13 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
    IDENTS for symbol names are inside the DECL sub-tree for an initDtor while typenames
    are not. 
    Because a DECL can produce several declarations this function writes the results into
-   the supplied SymbolTable, rather than producing a return value.
+   the supplied SymbolTable, the names are returned to preserve the order of the declarations
+   (e.g. if we are building a record where we need to know the layout).
 */
-static void convertDECL(SymbolTable *st, pANTLR3_BASE_TREE node)
+static list<string> convertDECL(SymbolTable *st, pANTLR3_BASE_TREE node)
 {
-  TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
+list<string> result;
+TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
   partitionList(children, typeToks, dtorToks, isNotDecl);
 
   // Typedef IDENTs are converted during the convertDeclSpec call.
@@ -306,7 +320,9 @@ static void convertDECL(SymbolTable *st, pANTLR3_BASE_TREE node)
       st->typedefs[name] = c;
     else
       st->symbols[name] = c;
+    result.push_back(name);
   tmplEnd
+  return result;
 }
 
 /* This is where we resolve typenames / symbol names. Until now both are flushed down from the
@@ -435,16 +451,9 @@ int count = node->getChildCount(node);
     case UNION: 
     case STRUCT:
     {
-      pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
-      string tag = (char*)idTok->getText(idTok)->chars;
-      //list<Decl*> ordered;
-      TokList fields = extractChildren((pANTLR3_BASE_TREE)node->getChild(node,1),0,-1);
-      printf("Pure def: %s\n",tag.c_str());
-      printTokList(fields);
-      dumpTree(node,0);
-      DataType r = convertRecord(tu, node);
-      printf("%s\n", r.str().c_str());
-
+      string tag;
+      DataType r = convertRecord(tu, node,tag);
+      tu.table->tags[tag] = tu.table->getCanon(r);
     }
       break;
     default:
@@ -519,6 +528,8 @@ TranslationU result;
     printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
     dumpTree(bt.blame,1);
   }
+
+  //dumpTree(firstPass.tree,0);
 
 
 /* Second pass: check function statements to see if any were declarations that are legal in the context

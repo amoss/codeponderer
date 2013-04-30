@@ -11,6 +11,7 @@
    vargs in functions.
 */
 class FuncType;
+class SymbolTable;
 class DataType
 {
 public:
@@ -19,9 +20,13 @@ public:
   bool isUnsigned, isConst;
   int  stars;    // Levels of indirection
   int  array;    // Number of dimensions
-  int  nFields;
   FuncType *fptr;
+
+  int  nFields;
   const DataType **fields;
+  SymbolTable *namesp;  // Record types have a private namespace, fields are canon within.
+                        // The shallow copy guarantee is a bit wobbly but should still hold...
+
   DataType();
   std::string str() const;
 };
@@ -89,7 +94,7 @@ public:
   SymbolTable *parent;
   std::map< std::string,const DataType* > symbols;
   std::map< std::string,const DataType* > typedefs;
-  std::map< std::string,DataType* > tags;       // Distinct names from typedefs
+  std::map< std::string,const DataType* > tags;       // Distinct names from typedefs
   std::map< std::string,Function* > functions;  // Function definitions in this scope
   std::map< std::string,FuncType* > funcRefs;   // Function types (ie pointers in this scope)
   /* As the above maps are defined over pointers we need a canonical address for a given type

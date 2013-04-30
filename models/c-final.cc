@@ -61,7 +61,7 @@ static DtComp dc;
 */
 DataType::DataType()
   : nFields(0), isUnsigned(false), isConst(false), fields(NULL), stars(0), 
-    primitive(DataType::Empty), array(0)
+    primitive(DataType::Empty), array(0), namesp(NULL)
 {
   // To avoid dependencies on c-init the intialisation is handled by the c-build module.
 }
@@ -134,8 +134,10 @@ string DataType::str() const
   }
   if(nFields > 0)
   {
+    res << '{';
     for(int i=0; i<nFields; i++ )
         res << fields[i]->str() << ";";
+    res << '}';
   }
   for(int i=0; i<array; i++)
     res << "[]";
@@ -171,6 +173,8 @@ map<string,const DataType*>::iterator it;
     printf("Decl: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
   for(it=typedefs.begin(); it!=typedefs.end(); ++it)
     printf("Type: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+  for(it=tags.begin(); it!=tags.end(); ++it)
+    printf("Tag: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
 }
 
 TranslationU::TranslationU()

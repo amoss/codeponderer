@@ -85,8 +85,8 @@ declSpecPostType : storageClass  declSpecPostType?
 // with a special case for struct definitions.
 declaration : declSpec initDecl (COMMA initDecl)*
             -> ^(DECL declSpec initDecl+)
-            | structSpecifier  
-            -> ^(DECL structSpecifier)      // TODO: Must be wrong, needs initDecl+ ??
+            | structSpecifier initDecl (COMMA initDecl)*
+            -> ^(DECL structSpecifier initDecl+)
             | enumSpecifier
             -> ^(DECL enumSpecifier)      // TODO: Must be wrong, needs initDecl+ ??
             | declSpec COLON NUM    
