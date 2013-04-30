@@ -63,7 +63,9 @@ struct a { int crap; } x;
 struct a y;
 struct { char a,b,c; } triple;
 struct triple { char a,b,c; };
-struct { struct a first,second; };
+struct a first,second;
+struct wrapping { struct a first,second; };
+union Weirdness { int x; char y; struct triple blah;};
 
 typedef struct 
 {

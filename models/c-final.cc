@@ -29,7 +29,7 @@ static FtComp fc;
     return true;
   if(b.array < a.array)
     return false;
-  if(a.primitive==DataType::Struct)
+  if(a.primitive==DataType::Struct || a.primitive==DataType::Union)
   {
     if(a.nFields < b.nFields)
       return true;

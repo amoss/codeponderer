@@ -105,6 +105,7 @@ DataType result;
           else
             return *it->second;
         }
+      case UNION:
       case STRUCT:
       {
         string tag;
@@ -112,7 +113,11 @@ DataType result;
         if( tag.length() > 0 )
         {
           if( result.nFields==0 )   // Using a tag with no compound
+          {
+            if(st->tags.find(tag)==st->tags.end())
+              throw BrokenTree(tok,"Unknown tag used");
             result = *st->tags[tag];
+          }
           else                      // Defining and using a tag
             st->tags[tag] = st->getCanon(result);
         }
@@ -526,8 +531,15 @@ TranslationU result;
     if( firstPass.tree->getType(firstPass.tree) == 0)
     {
       for(int i=0; i<firstPass.tree->getChildCount(firstPass.tree); i++)
-        processTopLevel((pANTLR3_BASE_TREE)firstPass.tree->getChild(firstPass.tree,i), result
-                        );
+      {
+        try {
+        processTopLevel((pANTLR3_BASE_TREE)firstPass.tree->getChild(firstPass.tree,i), result);
+        }
+        catch(BrokenTree bt) {
+          printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
+          dumpTree(bt.blame,1);
+        }
+      }
     }
     else
       processTopLevel(firstPass.tree, result);
