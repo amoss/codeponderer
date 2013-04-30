@@ -436,52 +436,56 @@ TokList::iterator walk = others.begin();
 }
 
 
-static void convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node)
+static Function *convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node)
 {
-/*
-  FuncDef *f = new FuncDef;
-  f->parse(node);
-  functions.push_back(f);
-
 pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
-  identifier = (char*)idTok->getText(idTok)->chars;
-TokList stmts = extractChildren((pANTLR3_BASE_TREE)node->getChild(node,1),0,-1);
-  printf("%u statements in %s\n", stmts.size(), identifier);
-  tmplForeach( list, pANTLR3_BASE_TREE, s, stmts)
-    stmtNodes.push_back(s);
-    pANTLR3_COMMON_TOKEN t = s->getToken(s);
-    TokList stmtToks = extractChildren(s,0,-1);
-    printf("%s(%u) ", cInCParserTokenNames[s->getType(s)], s->getToken(s)->index);
-    tmplForeach( list, pANTLR3_BASE_TREE, t, stmtToks )
-      printf("%s ", cInCParserTokenNames[t->getType(t)]);
-    tmplEnd
-    printf("\n");
-  tmplEnd
+char *identifier = (char*)idTok->getText(idTok)->chars;
+//TokList stmts = extractChildren((pANTLR3_BASE_TREE)node->getChild(node,1),0,-1);
+
   // Skip compound statement for now
 TokList params;
 TokList rest = extractChildren(node,2,-1);
 TokList::iterator child = rest.begin();
-  //REWRITE ---> moved into build takeWhile( child, rest.end(), params, isParam);
-  retType.parse(child, rest.end());
-  // Once upon a time these parameters were parsed as declarations, back when the world was young and
-  // the token stream was flat. But it because necessary to indicate dtor boundaries so that IDENTs
-  // could be resolved into symbol names and typedef'd names. Hence the slightly ugly construction here 
+  takeWhile( child, rest.end(), params, isParam);
+TypeAnnotation ann;
+DataType retType = convertDeclSpec(where.table, child, rest.end(), ann); 
+
+
+  // Once upon a time these parameters were parsed as declarations, back when the world was 
+  // young and the token stream was flat. But it because necessary to indicate dtor boundaries
+  // so that IDENTs could be resolved into symbol names and typedef'd names. Hence the 
+  // slightly ugly construction here.
+typedef pair<DataType,string> Binding;
+list<Binding> pBinding;
   tmplForeach( list, pANTLR3_BASE_TREE, p, params)
-    Type dummy;
-    char *name = parseParam(p, &dummy);
-    Decl *d = new Decl(dummy);
-    d->identifier = name;
-    args.push_back(d);
+    DataType temp;
+    string name = convertPARAM(where.table, p, &temp);
+    pBinding.push_back( pair<DataType,string>(temp,name) );
   tmplEnd
-  */
+
+  // Parse the parameters and build the FuncType
+FuncType f;
+  f.retType = where.table->getCanon(retType);
+  f.nParams = pBinding.size();
+  f.params     = new const DataType*[f.nParams];
+  f.paramNames = new string[f.nParams];
+  int idx=0;
+  tmplForeach(list, Binding, both, pBinding)
+    f.params[idx]     = where.table->getCanon(both.first);
+    f.paramNames[idx++] = both.second;
+  tmplEnd
+
+Function *def = new Function(f,where.table);
+  where.table->functions[identifier] = def;
+  return def;
 }
 
 
 
 
 
-
-static void processTopLevel(pANTLR3_BASE_TREE node, TranslationU &tu)
+typedef pair<pANTLR3_BASE_TREE,Function*> NewRoot;    // Leftovers for second parse
+static void processTopLevel(pANTLR3_BASE_TREE node, TranslationU &tu, list<NewRoot> &funcDefs)
 {
 int type  = node->getType(node);
 int count = node->getChildCount(node);
@@ -490,7 +494,12 @@ int count = node->getChildCount(node);
     case PREPRO: return;
     case SEMI:   return;
     case DECL:   convertDECL(tu.table, node);         break;
-    case FUNC:   convertFUNC(tu, node);               break; 
+    case FUNC:   
+    {
+      Function *f = convertFUNC(tu, node);
+      funcDefs.push_back( NewRoot(node,f) );
+      break; 
+    }
     // Pure definition, build the type in the tag namespace
     case UNION: 
     case STRUCT:
@@ -530,9 +539,39 @@ void dumpTokenStream(pANTLR3_COMMON_TOKEN_STREAM tokens)
   {
     pANTLR3_COMMON_TOKEN t = (pANTLR3_COMMON_TOKEN) vec->get(vec,i);
     if(t!=NULL)
-      printf("%s(%u) ", cInCParserTokenNames[t->getType(t)], t->index);
+      printf("%s(%ld) ", cInCParserTokenNames[t->getType(t)], t->index);
   }
   printf("\n");
+}
+
+/* stmt must be a STATEMENT node in the AST.
+*/
+pANTLR3_BASE_TREE reparse(pANTLR3_BASE_TREE stmt, pANTLR3_COMMON_TOKEN_STREAM tokens, 
+                          pcInCParser parser, SymbolTable *context)
+{
+// First token within the statement (virtual tokens have no position in the input stream)
+pANTLR3_BASE_TREE node2 = (pANTLR3_BASE_TREE)stmt->getChild(stmt,0);
+pANTLR3_COMMON_TOKEN tok = node2->getToken(node2);
+
+// Move the stream to statement start and try it as a top-level declaration.
+  tokens->p = tok->getTokenIndex(tok);
+cInCParser_declaration_return retVal2 = parser->declaration(parser);
+
+// If it was possible to parse the STATEMENT tokens as a DECL then it is a declaration
+// IFF the typenames resolve in the SymbolTable. Otherwise it is just a weird expr.
+  if( retVal2.tree->getType(retVal2.tree) == DECL )
+  {
+    try {
+      convertDECL(context, retVal2.tree);
+      return retVal2.tree;
+    }
+    catch(BrokenTree bt)
+    {
+      return stmt;
+    }
+  }
+// If it didn't parse at all as a DECL then it is definitely a STATEMENT
+  return stmt;
 }
 
 TranslationU parseUnit(char *filename)
@@ -542,7 +581,6 @@ pANTLR3_COMMON_TOKEN_STREAM tokens;
 pcInCLexer lex;
 pcInCParser parser;
 cInCParser_translationUnit_return firstPass;
-cInCParser_declaration_return retVal2;
 
 /* First parse: resolve outer declarations and functions down to statement level (with statement parsetree
                 in cases of typename ambiguity. */
@@ -554,7 +592,7 @@ cInCParser_declaration_return retVal2;
   firstPass = parser->translationUnit(parser);
 
 /* Pass II: semantic analysis on the partial parsetree */
-//list<FuncDef*> functions;    REMOVED ALL FUNCTION PROCESSING DURING REWRITE
+list<NewRoot> funcDefs;
 TranslationU result;
   /* Translation units with a single top-level declaration do not have a NIL node as parent. It only
      exists when the AST is a forest to act as a virtual root. */
@@ -564,7 +602,7 @@ TranslationU result;
       for(int i=0; i<firstPass.tree->getChildCount(firstPass.tree); i++)
       {
         try {
-        processTopLevel((pANTLR3_BASE_TREE)firstPass.tree->getChild(firstPass.tree,i), result);
+        processTopLevel((pANTLR3_BASE_TREE)firstPass.tree->getChild(firstPass.tree,i), result, funcDefs);
         }
         catch(BrokenTree bt) {
           printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
@@ -573,78 +611,39 @@ TranslationU result;
       }
     }
     else
-      processTopLevel(firstPass.tree, result);
+      processTopLevel(firstPass.tree, result, funcDefs);
   }
   catch(BrokenTree bt) {
     printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
     dumpTree(bt.blame,1);
   }
 
-  //dumpTree(firstPass.tree,0);
 
-
-/* Second pass: check function statements to see if any were declarations that are legal in the context
-                of the outer symbol table + the function symbol table as it is built. */
-
-/* REMOVED ALL FUNCTION PROCESSING DURING REWRITE 
+/* Second pass: check function statements to see if any were declarations that are legal in 
+                the context of the outer symbol table + the function symbol table as it is 
+                built. */
 
   // Dynamic overloading to prevent display of errors during speculation
   parser->pParser->rec->displayRecognitionError = dropError;
   //dumpTokenStream(tokens);
 
-  tmplForeach(list, FuncDef*, f, functions)
-    // Add a new Function to the SymbolTable...
-
-    tmplForeach(list, pANTLR3_BASE_TREE, s, f->stmtNodes)
-      // First token within the statement (virtual tokens have no position in the 
-      // input stream)
-      pANTLR3_COMMON_TOKEN tok;
-      if( s->getType(s) == STATEMENT)
-      {
-        pANTLR3_BASE_TREE node2 = (pANTLR3_BASE_TREE)s->getChild(s,0);
-        tok = node2->getToken(node2);
-      }
-      else
-        tok = s->getToken(s);
-      tokens->p = tok->getTokenIndex(tok);
-      retVal2 = parser->declaration(parser);
-      if( retVal2.tree->getType(retVal2.tree) == DECL )
-      {
-        // True iff all IDENTs were valid typenames (or primitives)
-        // TODO: will not handle local typedefs, but must ensure that the SymbolTable update is atomic
-        list<Decl*> vars;
-        try {
-          Decl::parse(retVal2.tree, vars);
-          bool failed = false;
-          tmplForeach(list, Decl*, v, vars)
-            if(!testConvertDecl(v, result.table))      // st should be const during this loop
-              failed = true;
-          tmplEnd
-          if(!failed)
-          {
-            printf("Statement valid as DECL:\n");
-            dumpTree(retVal2.tree,0);
-          }
-          else
-          {
-            printf("Statement rejected as DECL\n");
-            dumpTree(s,0);
-          }
-        }
-        catch(BrokenTree bt)
-        {
-          printf("Exception in DECL processing - must be statement\n");
-          dumpTree(s,0);
-        }
-      }
-      else 
-      {
-        printf("Non-generic statement - can't be DECL\n");
-        // Must be a statement if they were not.
-        dumpTree(s,0);
-      }
+  tmplForeach(list, NewRoot, f, funcDefs)
+    Function *target = f.second;
+    pANTLR3_BASE_TREE body = (pANTLR3_BASE_TREE) f.first->getChild(f.first,1);
+    list<pANTLR3_BASE_TREE> stmts = extractChildren(body,0,-1);
+    printf("Func: %lu stmts %s %s\n",stmts.size(), "noname", target->type->str().c_str());
+    tmplForeach(list, pANTLR3_BASE_TREE, s, stmts)
+      if(s->getType(s) == STATEMENT )
+        s = reparse(s, tokens, parser, target->scope); 
+      pANTLR3_COMMON_TOKEN t = s->getToken(s);
+      TokList stmtToks = extractChildren(s,0,-1);
+      printf("%s(%ld) ", cInCParserTokenNames[s->getType(s)], s->getToken(s)->index);
+      tmplForeach( list, pANTLR3_BASE_TREE, t, stmtToks )
+        printf("%s ", cInCParserTokenNames[t->getType(t)]);
+      tmplEnd
+      printf("\n");
     tmplEnd
   tmplEnd
-  */
+
   return result;
 }

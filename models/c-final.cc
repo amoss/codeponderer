@@ -161,10 +161,20 @@ string DataType::str() const
 
 string FuncType::str() const
 {
+stringstream res;
+  res << retType->str();
+  res << " <- ";
 list<string> pstrs;
   for(int i=0; i<nParams; i++)
     pstrs.push_back(paramNames[i] + ":" + params[i]->str());
-  return joinStrings(pstrs,',');
+  res << joinStrings(pstrs,',');
+  return res.str();
+}
+
+Function::Function(FuncType &outside, SymbolTable *where)
+{
+  type = where->getCanon(outside);
+  scope = new SymbolTable(where);
 }
 
 const DataType *SymbolTable::getCanon(DataType const &src)
@@ -215,11 +225,14 @@ void SymbolTable::dump()
 {
 map<string,const DataType*>::iterator it;
   for(it=symbols.begin(); it!=symbols.end(); ++it)
-    printf("Decl: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+    printf("Decl: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
   for(it=typedefs.begin(); it!=typedefs.end(); ++it)
-    printf("Type: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+    printf("Type: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
   for(it=tags.begin(); it!=tags.end(); ++it)
-    printf("Tag: %s -> %lx = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+    printf("Tag: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+map<string,Function *>::iterator fit;
+  for(fit=functions.begin(); fit!=functions.end(); ++fit)
+    printf("Function: %s -> %s\n", fit->first.c_str(), fit->second->type->str().c_str());
 }
 
 TranslationU::TranslationU()

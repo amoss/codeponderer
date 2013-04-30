@@ -30,6 +30,19 @@ int bob(char x, char *harry) {      DOESNT MATCH;
   ignored stuff;  { inside matched scopes; }
 } 
 
+char **realcode()
+{
+int x;
+  for(int i=0; i<7; i++)
+  {
+    char *xx;
+    xx = x+i;
+  }
+  printf("Hello");
+  while(true)
+    break;
+}
+
 // Pointers
 int *p1, **p2, ***p3;
 const char *cc;

@@ -76,12 +76,17 @@ public:
 
 };
 
+/* These are unique (defs of functions) but we make the same shallow-copying assumptions
+   because the scope pointer is private and the type is owned by the parent scope.
+*/
 class SymbolTable;
 class Function
 {
 public:
-  FuncType type;
+  FuncType *type;
   SymbolTable *scope;
+  Function(FuncType &outside, SymbolTable *where);
+  
 };
 
 // Merged ST for all headers
