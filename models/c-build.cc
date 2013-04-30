@@ -63,7 +63,8 @@ pANTLR3_BASE_TREE findTok(TokList toks, int tokType)
 // Called from processing a  ^(DECL declSpec initDecl+)
 //    declSpec contains storageClass, typeQualifier, typeSpecifier, IDENTs, INLINE keywords.
 //    TokList was the tokens upto the first initDecl (DECL).
-DataType convertDeclSpec(SymbolTable *st, TokList::iterator start, TokList::iterator end)
+DataType convertDeclSpec(SymbolTable *st, TokList::iterator start, TokList::iterator end,
+                         TypeAnnotation &ann)
 {
 DataType result;
   while(start!=end)
@@ -85,15 +86,15 @@ DataType result;
       case VOID:     result.primitive = DataType::Void;   break;
 
       case UNSIGNED: result.isUnsigned = true;            break;
-      case AUTO:                                          break;
-      case EXTERN:                                        break;
-      case STATIC:                                        break;
-      case CONST:                                         break;
-      case VOLATILE:                                      break;
-      case INLINE:                                        break;
+      case AUTO:     ann.isAuto = true;                   break;
+      case EXTERN:   ann.isExtern = true;                 break;
+      case STATIC:   ann.isStatic = true;                 break;
+      case CONST:    result.isConst = true;               break;
+      case VOLATILE: ann.isVolatile = true;               break;
+      case INLINE:   ann.isInline   = true;               break;
 
-      case TYPEDEF:                       break;    // TU???
-      case ELLIPSIS:                      break;
+      case TYPEDEF:  ann.isTypedef = true;                break;  
+      case ELLIPSIS:                                      break;
 
       case IDENT:
         {
@@ -179,6 +180,8 @@ FuncType result;
   // Initialise parameters
   int i=0;
   tmplForeach(list, pANTLR3_BASE_TREE, parTok, parCnts)
+    // Note: there is an unused ELLIPSIS case inside convertDeclSpec that is called from
+    //       convertPARAM. It could simplify this to move it there.
     if( parTok->getType(parTok) == ELLIPSIS )
     {
       result.paramNames[i] = "...";
@@ -267,6 +270,17 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
     default :
       throw BrokenTree(subTree,"Malformed init-dtor - missing declName");
   }
+  TokList::iterator it = dtorToks.begin();
+  while(++it != dtorToks.end())
+  {
+    pANTLR3_BASE_TREE t = *it;
+    switch( t->getType(t) )
+    {
+      case OPENSQ:
+        result.array++;
+        break;
+    }
+  }
   return identifier;
 }
 
@@ -282,12 +296,16 @@ static void convertDECL(SymbolTable *st, pANTLR3_BASE_TREE node)
   partitionList(children, typeToks, dtorToks, isNotDecl);
 
   // Typedef IDENTs are converted during the convertDeclSpec call.
-  DataType base = convertDeclSpec(st, typeToks.begin(), typeToks.end()); 
+  TypeAnnotation ann;
+  DataType base = convertDeclSpec(st, typeToks.begin(), typeToks.end(), ann); 
   tmplForeach(list,pANTLR3_BASE_TREE,dtor,dtorToks)
     DataType decl = base;
     string name = convertInitDtor(st, decl, dtor);
     const DataType *c = st->getCanon(decl) ;
-    st->symbols[name] = c;
+    if(ann.isTypedef)
+      st->typedefs[name] = c;
+    else
+      st->symbols[name] = c;
   tmplEnd
 }
 
@@ -332,14 +350,15 @@ bool prefix = true;
 
 static string convertPARAM(SymbolTable *st, pANTLR3_BASE_TREE node, DataType *target)
 {
-  TokList children = extractChildren(node,0,-1);
+TokList children = extractChildren(node,0,-1);
 
   // Process: typeWrapper typeQualifier?
-  list<pANTLR3_BASE_TREE> typeToks, others;
+list<pANTLR3_BASE_TREE> typeToks, others;
   findTypeTokens(children, typeToks, others);
 
-  DataType base = convertDeclSpec(st, typeToks.begin(), typeToks.end()); 
-  TokList::iterator walk = others.begin();
+TypeAnnotation ann;
+DataType base = convertDeclSpec(st, typeToks.begin(), typeToks.end(), ann); 
+TokList::iterator walk = others.begin();
   target->stars = 0;
   while(walk!=others.end())
   {
@@ -357,7 +376,11 @@ static string convertPARAM(SymbolTable *st, pANTLR3_BASE_TREE node, DataType *ta
     pANTLR3_BASE_TREE idTok = *walk;
     if( idTok->getType(idTok) == FPTR )
     {
-      FuncType f = convertParams( st, findTok(others,DECLPAR) );
+      pANTLR3_BASE_TREE ps = findTok(others,DECLPAR) ;
+      FuncType f;
+      // Check if the function-pointer has no parameters (default cons above should be fine)
+      if(ps!=NULL)
+        f = convertParams( st, ps);
       TokList fpChildren = extractChildren(idTok, 0, -1);
       if( fpChildren.size()<2 )
         throw BrokenTree(idTok, "FPTR without enough children");

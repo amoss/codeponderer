@@ -19,15 +19,15 @@ unsigned int zero=0;
 typedef unsigned char /* check comments inline */ Byte; 
 typedef int /*different comment*/ Map(int);
 Byte b;
-Should Not Parse;
+//Should Not Parse;
 void blah(Byte);
 
 // Function defs
 void kim() {}
-void kimson() { CRAP }
+void kimson() { CRAP; }
 int bobette(char y) { }
-int bob(char x, char *harry) {      DOESNT MATCH
-  ignored stuff  { inside matched scopes }
+int bob(char x, char *harry) {      DOESNT MATCH;
+  ignored stuff;  { inside matched scopes; }
 } 
 
 // Pointers
@@ -55,8 +55,8 @@ int reg(void (*callback)())
 
 // Broken stuff
 //*ptr;
-int * (* (*fp2) (int) );     // NOT EVEN CLOSE
-int * (* (*fp3) (int) ) [10];     // NOT EVEN CLOSE
+//int * (* (*fp2) (int) );     // NOT EVEN CLOSE
+//int * (* (*fp3) (int) ) [10];     // NOT EVEN CLOSE
 
 // Structures
 struct a { int crap; } x;

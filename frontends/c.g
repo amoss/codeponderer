@@ -94,7 +94,7 @@ declaration : declSpec initDecl (COMMA initDecl)*
 protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
           -> ^(PARAM declSpec STAR* fptrName ^(DECLPAR declPar) ) 
           | declSpec STAR* fptrName OPENPAR CLOSEPAR
-          -> ^(PARAM declSpec STAR* fptrName ) 
+          -> ^(PARAM declSpec STAR* fptrName )
           |               declSpec STAR* typeQualifier? IDENT? (OPENSQ notsq* CLOSESQ)?
           -> ^(PARAM declSpec STAR* IDENT?)
           | ELLIPSIS

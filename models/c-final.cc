@@ -13,6 +13,10 @@ static FtComp fc;
     return true;
   if(b.primitive < a.primitive)
     return false;
+  if(a.isConst && !b.isConst)
+    return true;
+  if(!a.isConst && b.isConst)
+    return false;
   if(a.stars < b.stars)
     return true;
   if(b.stars < a.stars)
@@ -56,7 +60,8 @@ static DtComp dc;
          produce an unstable ordering for std::set and all hell will break loose!
 */
 DataType::DataType()
-  : nFields(0), isUnsigned(false), fields(NULL), stars(0), primitive(DataType::Empty), array(0)
+  : nFields(0), isUnsigned(false), isConst(false), fields(NULL), stars(0), 
+    primitive(DataType::Empty), array(0)
 {
   // To avoid dependencies on c-init the intialisation is handled by the c-build module.
 }
@@ -68,6 +73,8 @@ bool compareFT(FuncType const &a, FuncType const &b)
 string DataType::str() const
 {
   list<string> parts;
+  if(isConst)
+    parts.push_back("const");
   if(isUnsigned)
     parts.push_back("unsigned");
   switch(primitive)
@@ -124,6 +131,8 @@ string DataType::str() const
     for(int i=0; i<nFields; i++ )
         res << fields[i]->str() << ";";
   }
+  for(int i=0; i<array; i++)
+    res << "[]";
   return res.str();
 }
 

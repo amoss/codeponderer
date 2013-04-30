@@ -16,12 +16,25 @@ class DataType
 public:
   enum { Empty, Ellipsis, Int, Long, Char, Float, Double, Short, Struct, Union, Enum, 
          Void, Function } primitive;
-  bool isUnsigned;
-  int  stars, array, nFields;
+  bool isUnsigned, isConst;
+  int  stars;    // Levels of indirection
+  int  array;    // Number of dimensions
+  int  nFields;
   FuncType *fptr;
   const DataType **fields;
   DataType();
   std::string str() const;
+};
+
+class TypeAnnotation
+{
+public:
+  bool isAuto, isExtern, isStatic, isVolatile, isInline, isTypedef;
+  TypeAnnotation()
+    : isAuto(false), isExtern(false), isStatic(false), isVolatile(false), isInline(false),
+      isTypedef(false)
+  {
+  }
 };
 
 // Arbitrary ordering for Type objects that models equality for set-inclusion
@@ -48,6 +61,11 @@ public:
   int nParams;
   const DataType **params;
   std::string    *paramNames;
+
+  FuncType()
+    : nParams(0), retType(NULL), params(NULL), paramNames(NULL)
+  {
+  }
 
 };
 
