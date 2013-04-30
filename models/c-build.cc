@@ -4,6 +4,7 @@ using namespace std;
 
 static list<string> convertDECL(SymbolTable *st, pANTLR3_BASE_TREE node);
 static string convertPARAM(SymbolTable *st, pANTLR3_BASE_TREE node, DataType *target);
+DataType convertRecord(SymbolTable *st, pANTLR3_BASE_TREE node, string &tag);
 
 bool isTypeTok(pANTLR3_BASE_TREE tok)
 {
@@ -105,12 +106,19 @@ DataType result;
             return *it->second;
         }
       case STRUCT:
-        printf("Type::parse(STRUCT)\n");
-        dumpTree(tok,1);
-        // If there is an IDENT inside then store the name, else anonymous
-        // Build the field list by parsing the declarations
-        ///isStruct = true;
+      {
+        string tag;
+        result = convertRecord(st, tok,tag);
+        if( tag.length() > 0 )
+        {
+          if( result.nFields==0 )   // Using a tag with no compound
+            result = *st->tags[tag];
+          else                      // Defining and using a tag
+            st->tags[tag] = st->getCanon(result);
+        }
+        // With a compound but no tag convertRecord has already built the type
         break;
+      }
       case ENUM :
         ///isEnum = true;
         break;
@@ -129,7 +137,7 @@ DataType result;
 
 // The structure of a record definition is:
 //    ^((STRUCT|UNION) IDENT? DECL*)
-DataType convertRecord(TranslationU const &where, pANTLR3_BASE_TREE node, string &tag)
+DataType convertRecord(SymbolTable *st, pANTLR3_BASE_TREE node, string &tag)
 {
 DataType res;
   if( node->getType(node)==STRUCT )
@@ -452,7 +460,7 @@ int count = node->getChildCount(node);
     case STRUCT:
     {
       string tag;
-      DataType r = convertRecord(tu, node,tag);
+      DataType r = convertRecord(tu.table, node,tag);
       tu.table->tags[tag] = tu.table->getCanon(r);
     }
       break;

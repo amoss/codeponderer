@@ -29,6 +29,21 @@ static FtComp fc;
     return true;
   if(b.array < a.array)
     return false;
+  if(a.primitive==DataType::Struct)
+  {
+    if(a.nFields < b.nFields)
+      return true;
+    if(a.nFields > b.nFields)
+      return false;
+    for(int i=0; i<a.nFields; i++)
+    {
+      if( (*this)(*a.fields[i], *b.fields[i]) )  // DtComp is stateless so reuse object
+        return true;
+      if( (*this)(*b.fields[i], *a.fields[i]) )
+        return false;
+    }
+    return false;
+  }
   if(a.primitive!=DataType::Function)
     return false;
   return fc(*a.fptr, *b.fptr);
