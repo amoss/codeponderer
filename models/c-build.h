@@ -1,7 +1,7 @@
 #include <list>
 #include <exception>
 #include "models/util.h"
-#include "models/c-final.h"
+#include "models/c-repr.h"
 
 TranslationU parseUnit(char *filename);
 

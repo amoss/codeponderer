@@ -47,9 +47,9 @@ int count = node->getChildCount(node);
   int t = (int)node->getType(node); 
   pANTLR3_COMMON_TOKEN tok = node->getToken(node);
   if(tok!=NULL)
-    printf("%s(%u) %lx Children %u ", cInCParserTokenNames[t], tok->index, node, count);
+    printf("%s(%ld) %p Children %u ", cInCParserTokenNames[t], tok->index, node, count);
   else
-    printf("%s(null) %lx Children %u ", cInCParserTokenNames[t], node, count);
+    printf("%s(null) %p Children %u ", cInCParserTokenNames[t], node, count);
   if(node->getText(node)!=NULL)
     printf("%s\n", node->getText(node)->chars);
   else
