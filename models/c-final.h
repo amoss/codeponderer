@@ -67,6 +67,8 @@ public:
   {
   }
 
+  std::string str() const;
+
 };
 
 class SymbolTable;

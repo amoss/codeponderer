@@ -116,7 +116,7 @@ string DataType::str() const
       parts.push_back("enum");
       break;
     case DataType::Function:
-      parts.push_back("func");
+      parts.push_back(fptr->retType->str());
       break;
     default:
       printf("Unknown prim %d\n",primitive);
@@ -126,6 +126,12 @@ string DataType::str() const
   res << joinStrings(parts,' ');
   for(int i=0; i<stars; i++)
     res << "*" ;
+  if(primitive==DataType::Function)
+  {
+    res << '(';
+    res << fptr->str();
+    res << ')';
+  }
   if(nFields > 0)
   {
     for(int i=0; i<nFields; i++ )
@@ -134,6 +140,14 @@ string DataType::str() const
   for(int i=0; i<array; i++)
     res << "[]";
   return res.str();
+}
+
+string FuncType::str() const
+{
+list<string> pstrs;
+  for(int i=0; i<nParams; i++)
+    pstrs.push_back(paramNames[i] + ":" + params[i]->str());
+  return joinStrings(pstrs,',');
 }
 
 const DataType *SymbolTable::getCanon(DataType const &src)
