@@ -435,16 +435,47 @@ TokList::iterator walk = others.begin();
   }
 }
 
-/*
-static void convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node, list<FuncDef*> &functions )
-{
 
+static void convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node)
+{
+/*
   FuncDef *f = new FuncDef;
   f->parse(node);
   functions.push_back(f);
 
+pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
+  identifier = (char*)idTok->getText(idTok)->chars;
+TokList stmts = extractChildren((pANTLR3_BASE_TREE)node->getChild(node,1),0,-1);
+  printf("%u statements in %s\n", stmts.size(), identifier);
+  tmplForeach( list, pANTLR3_BASE_TREE, s, stmts)
+    stmtNodes.push_back(s);
+    pANTLR3_COMMON_TOKEN t = s->getToken(s);
+    TokList stmtToks = extractChildren(s,0,-1);
+    printf("%s(%u) ", cInCParserTokenNames[s->getType(s)], s->getToken(s)->index);
+    tmplForeach( list, pANTLR3_BASE_TREE, t, stmtToks )
+      printf("%s ", cInCParserTokenNames[t->getType(t)]);
+    tmplEnd
+    printf("\n");
+  tmplEnd
+  // Skip compound statement for now
+TokList params;
+TokList rest = extractChildren(node,2,-1);
+TokList::iterator child = rest.begin();
+  //REWRITE ---> moved into build takeWhile( child, rest.end(), params, isParam);
+  retType.parse(child, rest.end());
+  // Once upon a time these parameters were parsed as declarations, back when the world was young and
+  // the token stream was flat. But it because necessary to indicate dtor boundaries so that IDENTs
+  // could be resolved into symbol names and typedef'd names. Hence the slightly ugly construction here 
+  tmplForeach( list, pANTLR3_BASE_TREE, p, params)
+    Type dummy;
+    char *name = parseParam(p, &dummy);
+    Decl *d = new Decl(dummy);
+    d->identifier = name;
+    args.push_back(d);
+  tmplEnd
+  */
 }
-*/
+
 
 
 
@@ -459,8 +490,7 @@ int count = node->getChildCount(node);
     case PREPRO: return;
     case SEMI:   return;
     case DECL:   convertDECL(tu.table, node);         break;
-    // case FUNC:   convertFUNC(tu, node, funcs);  break; 
-    case FUNC: break;    // REMOVED ALL FUNCTION PROCESSING DURING REWRITE
+    case FUNC:   convertFUNC(tu, node);               break; 
     // Pure definition, build the type in the tag namespace
     case UNION: 
     case STRUCT:

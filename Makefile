@@ -33,13 +33,11 @@ generated/cInCLexer.o: generated/cInCLexer.c $(RUNLIB)
 generated/cInCParser.o: generated/cInCParser.c $(RUNLIB)
 	gcc -c generated/cInCParser.c ${CFLAGS} -o generated/cInCParser.o
 
-MODOBJS=generated/c-init.o generated/c-final.o generated/c-build.o generated/util.o
+MODOBJS=generated/c-final.o generated/c-build.o generated/util.o
 models: $(MODOBJS)
-generated/c-init.o: models/c-init.cc models/c-init.h
-	g++ -c models/c-init.cc ${CFLAGS} -o generated/c-init.o
 generated/c-final.o: models/c-final.cc models/c-final.h
 	g++ -c models/c-final.cc ${CFLAGS} -o generated/c-final.o
-generated/c-build.o: models/c-build.cc models/c-build.h generated/c-init.o generated/c-final.o
+generated/c-build.o: models/c-build.cc models/c-build.h generated/c-final.o
 	g++ -c models/c-build.cc ${CFLAGS} -o generated/c-build.o
 generated/util.o: models/util.h models/util.cc
 	g++ -c models/util.cc ${CFLAGS} -o generated/util.o
