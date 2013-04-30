@@ -181,6 +181,36 @@ FuncType *SymbolTable::getCanon(FuncType const &src)
   return (FuncType*)&(*it);
 }
 
+const DataType *SymbolTable::lookupSymbol(string name) const
+{
+map<string,const DataType*>::const_iterator it = symbols.find(name);
+  if(it!=symbols.end())
+    return it->second;
+  if(parent!=NULL)
+    return parent->lookupSymbol(name);
+  return NULL;
+}
+
+const DataType *SymbolTable::lookupTypedef(string name) const
+{
+map<string,const DataType*>::const_iterator it = typedefs.find(name);
+  if(it!=typedefs.end())
+    return it->second;
+  if(parent!=NULL)
+    return parent->lookupTypedef(name);
+  return NULL;
+}
+
+const DataType *SymbolTable::lookupTag(string name) const
+{
+map<string,const DataType*>::const_iterator it = tags.find(name);
+  if(it!=tags.end())
+    return it->second;
+  if(parent!=NULL)
+    return parent->lookupTag(name);
+  return NULL;
+}
+
 void SymbolTable::dump()
 {
 map<string,const DataType*>::iterator it;

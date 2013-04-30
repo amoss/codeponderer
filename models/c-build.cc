@@ -99,11 +99,11 @@ DataType result;
 
       case IDENT:
         {
-          map<string,const DataType*>::iterator it = st->typedefs.find((char*)tok->getText(tok)->chars);
-          if(it==st->typedefs.end())
+          const DataType *theType = st->lookupTypedef((char*)tok->getText(tok)->chars);
+          if(theType==NULL)
             throw BrokenTree(tok, "Unknown type");
           else
-            return *it->second;
+            return *theType;
         }
       case UNION:
       case STRUCT:
@@ -114,9 +114,10 @@ DataType result;
         {
           if( result.nFields==0 )   // Using a tag with no compound
           {
-            if(st->tags.find(tag)==st->tags.end())
+            const DataType *tagDef = st->lookupTag(tag);
+            if(tagDef==NULL)
               throw BrokenTree(tok,"Unknown tag used");
-            result = *st->tags[tag];
+            result = *tagDef;
           }
           else                      // Defining and using a tag
             st->tags[tag] = st->getCanon(result);
@@ -165,7 +166,7 @@ pANTLR3_BASE_TREE first = *cs.begin();
 // we can drop the names but we need the declaration DataTypes in the correct order...
 // Type are canonical in private namespace... 
 list<string> order;
-  res.namesp = new SymbolTable; // TODO: Needs parent otherwise typedefs won't be found..
+  res.namesp = new SymbolTable(st);
   tmplForeach(list, pANTLR3_BASE_TREE, f, cs)
     if( f->getType(f) == DECL )
     {

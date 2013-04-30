@@ -103,9 +103,16 @@ public:
      canonical map (i.e. it is the inverse of an array value->unique address) */
   std::set< DataType, DtComp>       canon;
   std::set< FuncType, FtComp>       canonF;
-  const DataType *getCanon(DataType const &);
-  FuncType *getCanon(FuncType const &);
+  const DataType *getCanon(DataType const &);     // Inserts if not present
+  FuncType *getCanon(FuncType const &);           // Inserts if not present
+  const DataType *lookupTag(std::string) const;
+  const DataType *lookupTypedef(std::string) const;
+  const DataType *lookupSymbol(std::string) const;
   void dump();
+  SymbolTable(SymbolTable *p=NULL) :
+    parent(p)
+  {
+  }
 };
 
 class TranslationU
