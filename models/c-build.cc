@@ -112,12 +112,16 @@ DataType result;
         result = convertRecord(st, tok,tag);
         if( tag.length() > 0 )
         {
+          printf("Processed %s\n", tag.c_str());
           if( result.nFields==0 )   // Using a tag with no compound
           {
             const DataType *tagDef = st->lookupTag(tag);
             if(tagDef==NULL)
               throw BrokenTree(tok,"Unknown tag used");
             result = *tagDef;
+            // TODO: If the struct was initialised by a forward-reference then we cannot pass it by value
+            //       as no value has been constructed. Using the const DataType* would break the 
+            //       interface in use here...
           }
           else                      // Defining and using a tag
             st->tags[tag] = st->getCanon(result);
@@ -506,7 +510,25 @@ int count = node->getChildCount(node);
     {
       string tag;
       DataType r = convertRecord(tu.table, node,tag);
-      tu.table->tags[tag] = tu.table->getCanon(r);
+      printf("Processed puredef %s\n", tag.c_str());
+      if( tu.table->tags.find(tag) != tu.table->tags.end())
+      {
+        // TODO: This won't work, after we insert the stolen fields the value of the DataType has 
+        //       changed so the ordering and equality guarantees are affected. It could collide with
+        //       an existing type, but be stored separately...
+        DataType *orig = (DataType*)tu.table->tags[tag];  // Cast out const... could break uniqueness!!
+        if( orig->nFields > 0 )
+          throw BrokenTree(node, "Struct redefines tagname");
+        orig->nFields = r.nFields;
+        orig->fields = new const DataType *[orig->nFields];
+        memcpy(orig->fields, r.fields, sizeof(const DataType*[orig->nFields]));  // Steal pointers
+        printf("Repeat - filled in struct def\n");
+      }
+      else
+      {
+        printf("New Rec: %s\n", r.str().c_str() );
+        tu.table->tags[tag] = tu.table->getCanon(r);
+      }
     }
       break;
     default:

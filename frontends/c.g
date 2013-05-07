@@ -44,6 +44,9 @@ externDecl : functionDef
            | declaration SEMI
            | unionDef SEMI    // Pure definition (must include tag-name)
            | structDef SEMI   // Pure definition (must include tag-name)
+           | STRUCT IDENT SEMI // Forward reference
+           //-> ^(DECL ^(STRUCT IDENT))
+           -> ^(STRUCT IDENT)
            | enumSpecifier SEMI     // Pure definition (defines values)
            | PREPRO
            ;
