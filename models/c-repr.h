@@ -8,7 +8,17 @@
    and integer counts leads to easier code to read/write than STL iterators. These objects
    are shallow-copiable as all pointers are canoncial instances owned by the SymbolTable.
    Empty is a null-object and Ellipsis is a special dummy in the SymbolTable to catch
-   vargs in functions.
+   vargs in functions. 
+
+   Homogeneity: every type in the C type-system can be represented by instances of this
+                class, those types that represent radically different entities (i.e.
+                functions are callable, records can be indexed) have a 
+                split-representation with the more specific representation hidden behind
+                a pointer. This allows DataTypes to be ordered, and thus allows a 
+                canonical store for each symbol table that removes aliasing of types.
+
+   primitive==Function           <-> fptr!=NULL
+   primitive in {Union,Struct}   <-> rptr!=NULL
 */
 class FuncType;
 class SymbolTable;
@@ -31,6 +41,12 @@ public:
   std::string str() const;
 };
 
+/* Stuff that we parse but throw away (class used internally in c-build).
+
+   Some of this simply doesn't fit in the model for the type-system, and instead is
+   used when building the collections of DataTypes. Some of this we just don't care
+   about.
+*/
 class TypeAnnotation
 {
 public:
