@@ -19,6 +19,10 @@
 
    primitive==Function           <-> fptr!=NULL
    primitive in {Union,Struct}   <-> rptr!=NULL
+
+   A formal model of the C type-system can be found in:
+     C formalised in HOL. Michael Norrish. UCAM-CL-TR-453 ISSN 1476-2986 
+   
 */
 class FuncType;
 class SymbolTable;
