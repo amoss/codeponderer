@@ -21,6 +21,7 @@
    primitive in {Union,Struct}   <-> rptr!=NULL
 */
 class FuncType;
+class RecType;
 class SymbolTable;
 class DataType
 {
@@ -31,11 +32,7 @@ public:
   int  stars;    // Levels of indirection
   int  array;    // Number of dimensions
   FuncType *fptr;
-
-  int  nFields;
-  const DataType **fields;
-  SymbolTable *namesp;  // Record types have a private namespace, fields are canon within.
-                        // The shallow copy guarantee is a bit wobbly but should still hold...
+  RecType  *rptr;
 
   DataType();
   std::string str() const;
@@ -71,6 +68,12 @@ public:
   bool operator() (FuncType const &a, FuncType const &b) const;
 };
 
+class RtComp
+{
+public:
+  bool operator() (RecType const &a, RecType const &b) const;
+};
+
 
 /* All DataType objects referenced in params must be canonical instances owned by a SymbolTable
    object. It is assumed that FuncTypes can be shallow copied without problems.
@@ -78,9 +81,9 @@ public:
 class FuncType
 {
 public:
-  const DataType *retType;
+  const DataType *retType;    // Owned by the SymbolTable that owns the wrapper for this
   int nParams;
-  const DataType **params;
+  const DataType **params;    // Owned by the SymbolTable that owns the wrapper for this
   std::string    *paramNames;
 
   FuncType()
@@ -105,6 +108,18 @@ public:
   
 };
 
+class RecType
+{
+public:
+  RecType();
+  int  nFields;
+  const DataType **fields;
+  SymbolTable *namesp;  // Record types have a private namespace, fields are canon within.
+                        // The shallow copy guarantee is a bit wobbly but should still hold...
+  std::string str() const;
+
+};
+
 // Merged ST for all headers
 // TU level ST for globals
 // One ST per block
@@ -115,7 +130,7 @@ public:
   SymbolTable *parent;
   std::map< std::string,const DataType* > symbols;
   std::map< std::string,const DataType* > typedefs;
-  std::map< std::string,const DataType* > tags;       // Distinct names from typedefs
+  std::map< std::string,const RecType* > tags;   // Distinct names from typedefs
   std::map< std::string,Function* > functions;  // Function definitions in this scope
   std::map< std::string,FuncType* > funcRefs;   // Function types (ie pointers in this scope)
   /* As the above maps are defined over pointers we need a canonical address for a given type
@@ -126,7 +141,7 @@ public:
   std::set< FuncType, FtComp>       canonF;
   const DataType *getCanon(DataType const &);     // Inserts if not present
   FuncType *getCanon(FuncType const &);           // Inserts if not present
-  const DataType *lookupTag(std::string) const;
+  const RecType *lookupTag(std::string) const;
   const DataType *lookupTypedef(std::string) const;
   const DataType *lookupSymbol(std::string) const;
   void dump();

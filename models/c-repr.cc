@@ -9,6 +9,7 @@ using namespace std;
 bool DtComp::operator() (DataType const &a, DataType const &b) const
 {
 static FtComp fc;
+static RtComp rc;
   if(a.primitive < b.primitive)
     return true;
   if(b.primitive < a.primitive)
@@ -30,23 +31,28 @@ static FtComp fc;
   if(b.array < a.array)
     return false;
   if(a.primitive==DataType::Struct || a.primitive==DataType::Union)
-  {
-    if(a.nFields < b.nFields)
-      return true;
-    if(a.nFields > b.nFields)
-      return false;
-    for(int i=0; i<a.nFields; i++)
-    {
-      if( (*this)(*a.fields[i], *b.fields[i]) )  // DtComp is stateless so reuse object
-        return true;
-      if( (*this)(*b.fields[i], *a.fields[i]) )
-        return false;
-    }
-    return false;
-  }
+    return rc(*a.rptr, *b.rptr);
+
   if(a.primitive!=DataType::Function)
     return false;
   return fc(*a.fptr, *b.fptr);
+}
+
+bool RtComp::operator() (RecType const &a, RecType const &b) const
+{
+static DtComp dc;
+  if(a.nFields < b.nFields)
+    return true;
+  if(a.nFields > b.nFields)
+    return false;
+  for(int i=0; i<a.nFields; i++)
+  {
+    if( dc(*a.fields[i], *b.fields[i]) )  // DtComp is stateless so reuse object
+      return true;
+    if( dc(*b.fields[i], *a.fields[i]) )
+      return false;
+  }
+  return false;
 }
 
 bool FtComp::operator() (FuncType const &a, FuncType const &b) const
@@ -75,8 +81,8 @@ static DtComp dc;
          produce an unstable ordering for std::set and all hell will break loose!
 */
 DataType::DataType()
-  : nFields(0), isUnsigned(false), isConst(false), fields(NULL), stars(0), 
-    primitive(DataType::Empty), array(0), namesp(NULL)
+  : isUnsigned(false), isConst(false), stars(0), 
+    primitive(DataType::Empty), array(0)
 {
   // To avoid dependencies on c-init the intialisation is handled by the c-build module.
 }
@@ -147,13 +153,8 @@ string DataType::str() const
     res << fptr->str();
     res << ')';
   }
-  if(nFields > 0)
-  {
-    res << '{';
-    for(int i=0; i<nFields; i++ )
-        res << fields[i]->str() << ";";
-    res << '}';
-  }
+  if(primitive==DataType::Struct || primitive==DataType::Union)
+    res << rptr->str();
   for(int i=0; i<array; i++)
     res << "[]";
   return res.str();
@@ -175,6 +176,21 @@ Function::Function(FuncType &outside, SymbolTable *where)
 {
   type = where->getCanon(outside);
   scope = new SymbolTable(where);
+}
+
+RecType::RecType()
+  : nFields(0), fields(NULL), namesp(NULL)
+{
+}
+
+string RecType::str() const
+{
+stringstream res;
+  res << '{';
+  for(int i=0; i<nFields; i++ )
+      res << fields[i]->str() << ";";
+  res << '}';
+  return res.str();
 }
 
 const DataType *SymbolTable::getCanon(DataType const &src)
@@ -211,9 +227,9 @@ map<string,const DataType*>::const_iterator it = typedefs.find(name);
   return NULL;
 }
 
-const DataType *SymbolTable::lookupTag(string name) const
+const RecType *SymbolTable::lookupTag(string name) const
 {
-map<string,const DataType*>::const_iterator it = tags.find(name);
+map<string,const RecType*>::const_iterator it = tags.find(name);
   if(it!=tags.end())
     return it->second;
   if(parent!=NULL)
@@ -228,8 +244,9 @@ map<string,const DataType*>::iterator it;
     printf("Decl: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
   for(it=typedefs.begin(); it!=typedefs.end(); ++it)
     printf("Type: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
-  for(it=tags.begin(); it!=tags.end(); ++it)
-    printf("Tag: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+map<string,const RecType* >::iterator rit;
+  for(rit=tags.begin(); rit!=tags.end(); ++rit)
+    printf("Tag: %s -> %p = %s\n", rit->first.c_str(), rit->second, rit->second->str().c_str());
 map<string,Function *>::iterator fit;
   for(fit=functions.begin(); fit!=functions.end(); ++fit)
     printf("Function: %s -> %s\n", fit->first.c_str(), fit->second->type->str().c_str());
