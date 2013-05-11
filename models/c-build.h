@@ -24,8 +24,25 @@ class PartialDataType : public DataType
 {
 public:
   bool partial;
+
+  // Case 1.
+  //    struct fwd *blah;
+  // Case 2.
+  //    struct { struct fwd *blah; }
+  // Case 3.
+  //    void f( struct fwd *blah; }
+
+
+  // Partial = DataType (value rather than const* )  |  tagname (must be record-type)...
+
+  // Decl :=
+  //   Partial name 
+  // can either inject into SymbolTable or stick in a list...
+
   std::string tag;
-  std::string **structFields;
+  std::string typedefName;
+
+  std::string **structFields;     // Become overlay / wrapper for fields in DataType
   std::string **unionFields;
   // Empty value
   PartialDataType() 
@@ -40,10 +57,23 @@ public:
   void finalise(SymbolTable *st, std::string name, TypeAnnotation ann);
 };
 
+class Decl
+{
+public:
+  std::string name;
+  PartialDataType type;
+  Decl(std::string n, PartialDataType t) 
+    : name(n), type(t)
+  {
+  }
+};
+
 class PartialState
 {
+public:
   std::list<PartialDataType> defs;
   std::list<PartialDataType> decls;
+  bool findTag(std::string tag);
 };
 
 // TODO:
