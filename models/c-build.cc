@@ -356,7 +356,6 @@ list<Decl> result;
 TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
   partitionList(children, typeToks, dtorToks, isNotDecl);
 
-  // TODO: (fwd) Typedef IDENTs are NO LONGER converted during the convertDeclSpec call.
   TypeAnnotation ann;
   PartialDataType base = convertDeclSpec(typeToks.begin(), typeToks.end(), 
                                          ann, /* needed? */ unresolved); 
@@ -537,7 +536,6 @@ int count = node->getChildCount(node);
   {
     case PREPRO: return;
     case SEMI:   return;
-    // TODO: (fwd) catch Decl objects and store
     case DECL:   
     {
       list<Decl> decls = convertDECL(node, unresolved);
@@ -556,11 +554,9 @@ int count = node->getChildCount(node);
     {
       PartialDataType r = convertRecord(node, unresolved); 
       printf("Processed puredef %s %d\n", r.tag.c_str(), r.partial);
-      if( r.partial )
-      {
-        unresolved.defs.push_back(r);
-        break;
-      }
+      unresolved.defs.push_back(r);
+
+      /* All gone to finalise
       if( tu.table->tags.find(r.tag) != tu.table->tags.end())
       {
         // TODO: This won't work, after we insert the stolen fields the value of the DataType has 
@@ -578,7 +574,7 @@ int count = node->getChildCount(node);
       {
         printf("New Rec: %s\n", r.str().c_str() );
         tu.table->tags[r.tag] = tu.table->getCanon(r);
-      }
+      }*/
     }
       break;
     default:
@@ -731,8 +727,8 @@ TranslationU result;
    sub-parts will not change inbetween.
 
   More TODO (fwd):
-   name parameter implies this is a decl.
-   no way to handle puredefs in below
+   name parameter implies this is a decl.   FIXED
+   no way to handle puredefs in below       FIXED
    no error cases for typedef / tag resolution errors
 */
 bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation ann)
@@ -756,7 +752,10 @@ bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation
     for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
       building.fields[idx++] = namesp->symbols[f->name];
     const DataType *c = st->getCanon(building);
-    st->symbols[name] = c;
+    if(name.length()>0)
+      st->symbols[name] = c;
+    else
+      st->tags[tag] = c;
     return true;
   }
 
@@ -771,6 +770,21 @@ const DataType *c = st->getCanon(*this) ;
 
 void PartialState::finalise(SymbolTable *st)
 {
+list<PartialDataType>::iterator ds = defs.begin();
+TypeAnnotation dummy;
+  for(; ds!=defs.end() ;)
+  {
+    if(ds->finalise(st, "", dummy))
+    {
+      printf("Finalised def %s\n", ds->tag.c_str());
+      ds = defs.erase(ds);
+    }
+    else
+    {
+      printf("Skipping def %s\n", ds->tag.c_str());
+      ++ds;
+    }
+  }
 list<Decl>::iterator it = decls.begin();
   for(; it!=decls.end() ;)
   {
