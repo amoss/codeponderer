@@ -2,7 +2,7 @@
 
 using namespace std;
 
-//static list<Decl> convertDECL(pANTLR3_BASE_TREE node, PartialState &unresolved);
+static list<Decl> convertDECL(pANTLR3_BASE_TREE node, PartialState const &unresolved);
 static string convertPARAM(pANTLR3_BASE_TREE node, DataType *target, PartialState const &unresolved);
 PartialDataType convertRecord(pANTLR3_BASE_TREE node, PartialState const &unresolved);
 
@@ -193,27 +193,14 @@ pANTLR3_BASE_TREE first = *cs.begin();
 // we can drop the names but we need the declaration DataTypes in the correct order...
 // Type are canonical in private namespace... 
 
-/* TODO: (fwd) need to build the overlay fields...
 
-list<Decl> order;
-  res.namesp = new SymbolTable(st);
   tmplForeach(list, pANTLR3_BASE_TREE, f, cs)
     if( f->getType(f) == DECL )
     {
       list<Decl> partial = convertDECL(f,unresolved);
-      order.splice(order.end(), partial); 
+      res.fields.splice(res.fields.end(), partial); 
     }
   tmplEnd
-  res.nFields = res.namesp->symbols.size();
-  res.fields  = new const DataType*[res.nFields];
-  int idx = 0;
-  tmplForeach(list, string, name, order)
-    res.fields[idx++] = res.namesp->symbols[name];
-  tmplEnd
-
-  if(res.tag.length()>0 && res.nFields==0)
-    res.partial = true;
-*/
   return res;
 }
 
@@ -382,7 +369,7 @@ TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
     else
     {
       // decl.finalise(st, name, ann);
-      result.push_back( Decl(name,decltype) );
+      result.push_back( Decl(name,decltype,ann) );
     }
   tmplEnd
   return result;
@@ -551,7 +538,12 @@ int count = node->getChildCount(node);
     case PREPRO: return;
     case SEMI:   return;
     // TODO: (fwd) catch Decl objects and store
-    case DECL:   convertDECL(node, unresolved);         break;
+    case DECL:   
+    {
+      list<Decl> decls = convertDECL(node, unresolved);
+      unresolved.decls.splice(unresolved.decls.end(), decls);
+      break;
+    }
     case FUNC:   
     {
       Function *f = convertFUNC(tu, node, unresolved); 
@@ -579,7 +571,7 @@ int count = node->getChildCount(node);
           throw BrokenTree(node, "Struct redefines tagname");
         orig->nFields = r.nFields;
         orig->fields = new const DataType *[orig->nFields];
-        memcpy(orig->fields, r.fields, sizeof(const DataType*[orig->nFields]));  // Steal pointers
+        //memcpy(orig->fields, r.fields, sizeof(const DataType*[orig->nFields]));  // Steal pointers
         printf("Repeat - filled in struct def\n");
       }
       else
@@ -700,6 +692,7 @@ TranslationU result;
     printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
     dumpTree(bt.blame,1);
   }
+  unresolved.finalise(result.table);
 
 
 /* Second pass: check function statements to see if any were declarations that are legal in 
@@ -731,11 +724,65 @@ TranslationU result;
   return result;
 }
 
-void PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation ann)
+/* Build data-types bottom-up.
+   Resolve tag and typedef names, register in SymbolTable and canonise every part 
+   of the type. This operation does not need to be atomic, if sub-parts succeed and
+   the whole fails then it will be repeated later - the canonical values of the 
+   sub-parts will not change inbetween.
+
+  More TODO (fwd):
+   name parameter implies this is a decl.
+   no way to handle puredefs in below
+   no error cases for typedef / tag resolution errors
+*/
+bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation ann)
 {
+  if(partial)
+    return false;
+
+  if(primitive==DataType::Struct || primitive==DataType::Union)
+  {
+    SymbolTable *namesp = new SymbolTable(st);
+    for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
+      if(!f->type.finalise(namesp, f->name, f->ann))
+      {
+        delete namesp;
+        return false;
+      }
+    DataType building = *this;
+    building.nFields = namesp->symbols.size();
+    building.fields  = new const DataType*[building.nFields];
+    int idx=0;
+    for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
+      building.fields[idx++] = namesp->symbols[f->name];
+    const DataType *c = st->getCanon(building);
+    st->symbols[name] = c;
+    return true;
+  }
+
+
 const DataType *c = st->getCanon(*this) ;
   if(ann.isTypedef)
     st->typedefs[name] = c;
   else
     st->symbols[name] = c;
+  return true;
+}
+
+void PartialState::finalise(SymbolTable *st)
+{
+list<Decl>::iterator it = decls.begin();
+  for(; it!=decls.end() ;)
+  {
+    if(it->type.finalise(st, it->name, it->ann))
+    {
+      printf("Finalised %s\n", it->name.c_str());
+      it = decls.erase(it);
+    }
+    else
+    {
+      printf("Skipping unresolved %s\n", it->name.c_str());
+      ++it;
+    }
+  }
 }

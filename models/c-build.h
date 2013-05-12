@@ -20,6 +20,7 @@ public:
 /* To allow for forward references (co-recursion in record definitions) this wrapper
    stores the tag-names of unresolved fields.
 */
+class Decl;
 class PartialDataType : public DataType
 {
 public:
@@ -41,20 +42,19 @@ public:
 
   std::string tag;
   std::string typedefName;
+  std::list<Decl> fields;
 
-  std::string **structFields;     // Become overlay / wrapper for fields in DataType
-  std::string **unionFields;
   // Empty value
   PartialDataType() 
-    : DataType(), partial(false), structFields(NULL), unionFields(NULL)
+    : DataType(), partial(false)
   {
   }
   // Embed value
   PartialDataType(DataType const &copy)
-    : DataType(copy), partial(false), structFields(NULL), unionFields(NULL)
+    : DataType(copy), partial(false)
   {
   }
-  void finalise(SymbolTable *st, std::string name, TypeAnnotation ann);
+  bool finalise(SymbolTable *st, std::string name, TypeAnnotation ann);
 };
 
 class Decl
@@ -62,8 +62,9 @@ class Decl
 public:
   std::string name;
   PartialDataType type;
-  Decl(std::string n, PartialDataType t) 
-    : name(n), type(t)
+  TypeAnnotation ann;
+  Decl(std::string n, PartialDataType t, TypeAnnotation a) 
+    : name(n), type(t), ann(a)
   {
   }
 };
@@ -72,7 +73,8 @@ class PartialState
 {
 public:
   std::list<PartialDataType> defs;
-  std::list<PartialDataType> decls;
+  std::list<Decl> decls;
+  void finalise(SymbolTable *st);
   bool findTag(std::string tag);
 };
 
