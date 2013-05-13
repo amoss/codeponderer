@@ -40,6 +40,7 @@ public:
   //   Partial name 
   // can either inject into SymbolTable or stick in a list...
 
+  pANTLR3_BASE_TREE node;
   std::string tag;
   std::string typedefName;
   std::list<Decl> fields;
@@ -54,7 +55,8 @@ public:
     : DataType(copy), partial(false)
   {
   }
-  bool finalise(SymbolTable *st, std::string name, TypeAnnotation ann);
+  bool finalise(SymbolTable *st, std::string name, TypeAnnotation ann, 
+                std::list<std::string> &fwd_refs);
 };
 
 class Decl
@@ -74,6 +76,7 @@ class PartialState
 public:
   std::list<PartialDataType> defs;
   std::list<Decl> decls;
+  std::list<std::string> waitingTags;   // Blocked by a forward-reference
   void finalise(SymbolTable *st);
   bool findTag(std::string tag);
 };

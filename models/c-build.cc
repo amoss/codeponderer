@@ -117,36 +117,6 @@ PartialDataType result;
         printf("Processing declspec TODO: (fwd)\n");
         result = convertRecord(tok, unresolved);
 
-        /* TODO: (fwd)
-        if(result.partial)
-          ; // Add to PartialState
-        else if( result.tag.length()==0 )
-          // With a compound but no tag convertRecord has already built the type
-          return result;
-        else
-        {
-          // Decide if the tag has been resolved yet, or is a forward-reference
-          printf("Processed %s\n", result.tag.c_str());
-          if( result.nFields==0 )   // Using a tag with no compound
-          {
-            const DataType *tagDef = st->lookupTag(result.tag);
-            if(tagDef==NULL)
-            {
-              // Use of a tagname that is a forward-reference
-              if( !unresolved.findTag(result.tag) )
-                throw BrokenTree(tok,"Unknown tag used");
-              result.partial = true;
-              return result;
-            }
-            result = *tagDef;
-            // TODO: If the struct was initialised by a forward-reference then we cannot pass it by value
-            //       as no value has been constructed. Using the const DataType* would break the 
-            //       interface in use here...
-          }
-          else                      // Defining and using a tag
-            st->tags[result.tag] = st->getCanon(result);
-        }
-        */
         break;
       }
       case ENUM :
@@ -173,6 +143,7 @@ PartialDataType result;
 PartialDataType convertRecord(pANTLR3_BASE_TREE node, PartialState const &unresolved)
 {
 PartialDataType res;
+  res.node = node;
   if( node->getType(node)==STRUCT )
     res.primitive = DataType::Struct;
   else 
@@ -359,6 +330,7 @@ TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
   TypeAnnotation ann;
   PartialDataType base = convertDeclSpec(typeToks.begin(), typeToks.end(), 
                                          ann, /* needed? */ unresolved); 
+  base.node = node;
 
   tmplForeach(list,pANTLR3_BASE_TREE,dtor,dtorToks)
     PartialDataType decltype = base;
@@ -683,12 +655,12 @@ TranslationU result;
     }
     else
       processTopLevel(firstPass.tree, result, funcDefs, unresolved);
+    unresolved.finalise(result.table);
   }
   catch(BrokenTree bt) {
     printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
     dumpTree(bt.blame,1);
   }
-  unresolved.finalise(result.table);
 
 
 /* Second pass: check function statements to see if any were declarations that are legal in 
@@ -731,7 +703,8 @@ TranslationU result;
    no way to handle puredefs in below       FIXED
    no error cases for typedef / tag resolution errors
 */
-bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation ann)
+bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation ann,
+                               list<string> &waiting)
 {
   if(partial)
     return false;
@@ -740,11 +713,32 @@ bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation
   {
     SymbolTable *namesp = new SymbolTable(st);
     for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
-      if(!f->type.finalise(namesp, f->name, f->ann))
+      if(!f->type.finalise(namesp, f->name, f->ann, waiting))
       {
         delete namesp;
+        waiting.push_back(tag);
         return false;
       }
+    if(fields.size() == 0) {
+      if(name.size()==0)
+      {
+        printf("Forward ref %s\n", tag.c_str());
+        waiting.push_back(tag);
+        return true;
+      }
+      else {
+        const DataType *record = st->lookupTag(tag);
+        if( record==NULL )
+        {
+          tmplForeach(list, string, t, waiting)
+            if( t==tag )
+              return false;
+          tmplEnd
+          throw BrokenTree(node, "Unknown tag used");
+        }
+        printf("Lookup tag %s -> %p %s\n", tag.c_str(), record, record->str().c_str());
+      }
+    }
     DataType building = *this;
     building.nFields = namesp->symbols.size();
     building.fields  = new const DataType*[building.nFields];
@@ -768,13 +762,38 @@ const DataType *c = st->getCanon(*this) ;
   return true;
 }
 
+        /* TODO: (fwd)
+        {
+          // Decide if the tag has been resolved yet, or is a forward-reference
+          printf("Processed %s\n", result.tag.c_str());
+          if( result.nFields==0 )   // Using a tag with no compound
+          {
+            const DataType *tagDef = st->lookupTag(result.tag);
+            if(tagDef==NULL)
+            {
+              // Use of a tagname that is a forward-reference
+              if( !unresolved.findTag(result.tag) )
+                throw BrokenTree(tok,"Unknown tag used");
+              result.partial = true;
+              return result;
+            }
+            result = *tagDef;
+            // TODO: If the struct was initialised by a forward-reference then we cannot pass it by value
+            //       as no value has been constructed. Using the const DataType* would break the 
+            //       interface in use here...
+          }
+          else                      // Defining and using a tag
+            st->tags[result.tag] = st->getCanon(result);
+        }
+        */
+
 void PartialState::finalise(SymbolTable *st)
 {
 list<PartialDataType>::iterator ds = defs.begin();
 TypeAnnotation dummy;
   for(; ds!=defs.end() ;)
   {
-    if(ds->finalise(st, "", dummy))
+    if(ds->finalise(st, "", dummy, waitingTags))
     {
       printf("Finalised def %s\n", ds->tag.c_str());
       ds = defs.erase(ds);
@@ -788,7 +807,7 @@ TypeAnnotation dummy;
 list<Decl>::iterator it = decls.begin();
   for(; it!=decls.end() ;)
   {
-    if(it->type.finalise(st, it->name, it->ann))
+    if(it->type.finalise(st, it->name, it->ann, waitingTags))
     {
       printf("Finalised %s\n", it->name.c_str());
       it = decls.erase(it);
