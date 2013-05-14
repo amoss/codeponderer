@@ -71,21 +71,30 @@ static DtComp dc;
   return false;
 }
 
+TypeAtom::TypeAtom()
+  : isUnsigned(false), isConst(false), stars(0), primitive(TypeAtom::Empty), array(0)
+{
+}
+
 /* Note: MUST initialise every field that is involved in the comparison otherwise it will
          produce an unstable ordering for std::set and all hell will break loose!
 */
 DataType::DataType()
-  : nFields(0), isUnsigned(false), isConst(false), fields(NULL), stars(0), 
-    primitive(DataType::Empty), array(0), namesp(NULL)
+  : nFields(0), fields(NULL), namesp(NULL)
 {
   // To avoid dependencies on c-init the intialisation is handled by the c-build module.
+}
+
+DataType::DataType(TypeAtom const &copy)
+  : TypeAtom(copy)
+{
 }
 
 bool compareFT(FuncType const &a, FuncType const &b)
 {
 }
 
-string DataType::str() const
+string TypeAtom::str() const
 {
   list<string> parts;
   if(isConst)
@@ -131,7 +140,7 @@ string DataType::str() const
       parts.push_back("enum");
       break;
     case DataType::Function:
-      parts.push_back(fptr->retType->str());
+      //parts.push_back(fptr->retType->str());
       break;
     default:
       printf("Unknown prim %d\n",primitive);
@@ -141,6 +150,13 @@ string DataType::str() const
   res << joinStrings(parts,' ');
   for(int i=0; i<stars; i++)
     res << "*" ;
+  return res.str();
+}
+
+string DataType::str() const
+{
+stringstream res;
+  res << ((TypeAtom)*this).str();
   if(primitive==DataType::Function)
   {
     res << '(';

@@ -16,6 +16,8 @@
                 split-representation with the more specific representation hidden behind
                 a pointer. This allows DataTypes to be ordered, and thus allows a 
                 canonical store for each symbol table that removes aliasing of types.
+   Split:       the fields within AtomType are separate from the main class so that they
+                can be shared with PartialDataType in the build module.
 
    primitive==Function           <-> fptr!=NULL
    primitive in {Union,Struct}   <-> rptr!=NULL
@@ -24,9 +26,8 @@
      C formalised in HOL. Michael Norrish. UCAM-CL-TR-453 ISSN 1476-2986 
    
 */
-class FuncType;
-class SymbolTable;
-class DataType
+
+class TypeAtom
 {
 public:
   enum { Empty, Ellipsis, Int, Long, Char, Float, Double, Short, Struct, Union, Enum, 
@@ -34,14 +35,24 @@ public:
   bool isUnsigned, isConst;
   int  stars;    // Levels of indirection
   int  array;    // Number of dimensions
-  FuncType *fptr;
 
+  TypeAtom();
+  std::string str() const;
+};
+
+class FuncType;
+class SymbolTable;
+class DataType : public TypeAtom
+{
+public:
+  FuncType *fptr;
   int  nFields;
   const DataType **fields;
   SymbolTable *namesp;  // Record types have a private namespace, fields are canon within.
                         // The shallow copy guarantee is a bit wobbly but should still hold...
 
   DataType();
+  DataType(TypeAtom const &);
   std::string str() const;
 };
 

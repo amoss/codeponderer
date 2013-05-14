@@ -22,7 +22,7 @@ public:
    stores the tag-names of unresolved fields.
 */
 class Decl;
-class PartialDataType : public DataType
+class PartialDataType : public TypeAtom
 {
 public:
   bool partial;
@@ -48,15 +48,29 @@ public:
 
   // Empty value
   PartialDataType() 
-    : DataType(), partial(false)
+    : TypeAtom(), partial(false)
   {
   }
   // Embed value
-  PartialDataType(DataType const &copy)
+  /*PartialDataType(DataType const &copy)
     : DataType(copy), partial(false)
   {
-  }
+  }*/
 
+  std::string str() const;
+  bool operator <(PartialDataType const &rhs) const
+  {
+    if(primitive!=rhs.primitive)
+      return primitive < rhs.primitive;
+    switch(primitive)
+    {
+      case DataType::Struct:
+      case DataType::Union:
+        return tag < rhs.tag;
+      default:
+        return false;
+    }
+  }
   const DataType *makeCanon(SymbolTable *target, SymbolTable *namesp);
   bool finalise(SymbolTable *st, std::string name, TypeAnnotation ann, 
                 std::list<std::string> &fwd_refs);
@@ -77,12 +91,13 @@ public:
 class PartialState
 {
 public:
-  std::list<PartialDataType> defs;
+  //std::list<PartialDataType> defs;
   std::list<Decl> decls;
 
   std::list<std::string> waitingTags;   // Blocked by a forward-reference
   DiGraph<PartialDataType, int> deps;
 
+  void insert(PartialDataType p);
   void finalise(SymbolTable *st);
   bool findTag(std::string tag);
 };

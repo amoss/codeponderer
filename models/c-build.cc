@@ -3,7 +3,7 @@
 using namespace std;
 
 static list<Decl> convertDECL(pANTLR3_BASE_TREE node, PartialState const &unresolved);
-static string convertPARAM(pANTLR3_BASE_TREE node, DataType *target, PartialState const &unresolved);
+static string convertPARAM(pANTLR3_BASE_TREE node, PartialDataType *target, PartialState const &unresolved);
 PartialDataType convertRecord(pANTLR3_BASE_TREE node, PartialState const &unresolved);
 
 bool isTypeTok(pANTLR3_BASE_TREE tok)
@@ -143,6 +143,8 @@ PartialDataType result;
 PartialDataType convertRecord(pANTLR3_BASE_TREE node, PartialState const &unresolved)
 {
 PartialDataType res;
+  printf("ConvertRecord:\n");
+  dumpTree(node,1);
   res.node = node;
   if( node->getType(node)==STRUCT )
     res.primitive = DataType::Struct;
@@ -172,6 +174,7 @@ pANTLR3_BASE_TREE first = *cs.begin();
       res.fields.splice(res.fields.end(), partial); 
     }
   tmplEnd
+  printf("Finished convertRecord on %s\n", res.str().c_str());
   return res;
 }
 
@@ -210,7 +213,7 @@ FuncType result;
     }
     else
     {
-      DataType temp;
+      PartialDataType temp;
       result.paramNames[i] = convertPARAM(parTok, &temp, unresolved);
       // TODO: (fwd) finalisation code for building
       //result.params[i] = st->getCanon(temp);
@@ -226,7 +229,7 @@ FuncType result;
      Decouple the parsing functions from the SymbolTable entirely. Return a list of Decl
      All the injection / canonisation code moves to finalise
 */
-string convertInitDtor(DataType &result, pANTLR3_BASE_TREE subTree,
+string convertInitDtor(PartialDataType &result, pANTLR3_BASE_TREE subTree,
                        PartialState const &unresolved)
 {
 char *identifier;
@@ -385,7 +388,7 @@ bool prefix = true;
   tmplEnd
 }
 
-static string convertPARAM(pANTLR3_BASE_TREE node, DataType *target,
+static string convertPARAM(pANTLR3_BASE_TREE node, PartialDataType *target,
                            PartialState const &unresolved)
 {
 TokList children = extractChildren(node,0,-1);
@@ -395,7 +398,7 @@ list<pANTLR3_BASE_TREE> typeToks, others;
   findTypeTokens(children, typeToks, others);
 
 TypeAnnotation ann;
-DataType base = convertDeclSpec(typeToks.begin(), typeToks.end(), ann, unresolved); 
+PartialDataType base = convertDeclSpec(typeToks.begin(), typeToks.end(), ann, unresolved); 
 TokList::iterator walk = others.begin();
   target->stars = 0;
   while(walk!=others.end())
@@ -460,7 +463,7 @@ TokList rest = extractChildren(node,2,-1);
 TokList::iterator child = rest.begin();
   takeWhile( child, rest.end(), params, isParam);
 TypeAnnotation ann;
-DataType retType = convertDeclSpec(child, rest.end(), ann, unresolved); 
+PartialDataType retType = convertDeclSpec(child, rest.end(), ann, unresolved); 
 
 
   // Once upon a time these parameters were parsed as declarations, back when the world was 
@@ -470,12 +473,14 @@ DataType retType = convertDeclSpec(child, rest.end(), ann, unresolved);
 typedef pair<DataType,string> Binding;
 list<Binding> pBinding;
   tmplForeach( list, pANTLR3_BASE_TREE, p, params)
-    DataType temp;
+    PartialDataType temp;
     string name = convertPARAM(p, &temp, unresolved);
-    pBinding.push_back( pair<DataType,string>(temp,name) );
+    pBinding.push_back( pair<PartialDataType,string>(temp,name) );
   tmplEnd
 
   // Parse the parameters and build the FuncType
+/* TODO:
+      Cannot fix functions until after the type canonicalisation is finished
 FuncType f;
   f.retType = where.table->getCanon(retType);
   f.nParams = pBinding.size();
@@ -490,6 +495,7 @@ FuncType f;
 Function *def = new Function(f,where.table);
   where.table->functions[identifier] = def;
   return def;
+  */
 }
 
 
@@ -526,7 +532,9 @@ int count = node->getChildCount(node);
     {
       PartialDataType r = convertRecord(node, unresolved); 
       printf("Processed puredef %s %d\n", r.tag.c_str(), r.partial);
-      unresolved.defs.push_back(r);
+
+      //unresolved.defs.push_back(r);
+      unresolved.insert(r);     // Dependency graph functions as a queue
 
       /* All gone to finalise
       if( tu.table->tags.find(r.tag) != tu.table->tags.end())
@@ -694,13 +702,31 @@ TranslationU result;
 
 const DataType *PartialDataType::makeCanon(SymbolTable *target, SymbolTable *namesp)
 {
-    DataType building = *this;
+    DataType building = (TypeAtom)*this;
     building.nFields = namesp->symbols.size();
     building.fields  = new const DataType*[building.nFields];
     int idx=0;
     for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
       building.fields[idx++] = namesp->symbols[f->name];
     return target->getCanon(building);
+}
+
+string PartialDataType::str() const
+{
+stringstream res;
+  res << ((TypeAtom)*this).str();
+  if(primitive==TypeAtom::Struct || primitive==TypeAtom::Union)
+  {
+    res << " " << tag << " ";
+    res << "{ ";
+    for(list<Decl>::const_iterator it = fields.begin(); it!=fields.end(); ++it)
+    {
+      res << it->type.str();
+      res << "; ";
+    }
+    res << "}";
+  }
+  return res.str();
 }
 
 /* Build data-types bottom-up.
@@ -727,6 +753,7 @@ bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation
       if(!f->type.finalise(namesp, f->name, f->ann, waiting))
       {
         delete namesp;
+        printf("Pushing %s to waiting\n", tag.c_str());
         waiting.push_back(tag);
         return false;
       }
@@ -738,10 +765,16 @@ bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation
         return true;
       }
       else {
+        if(tag.length()==0)
+          printf("Anonymous!\n");
+        else
+          printf("TAG %s %d\n", tag.c_str(), waiting.size());
         const DataType *record = st->lookupTag(tag);
         if( record==NULL )
         {
           tmplForeach(list, string, t, waiting)
+            printf("Iterate?\n");
+            printf("%s\n",t.c_str());
             if( t==tag )
               return false;
           tmplEnd
@@ -795,7 +828,7 @@ const DataType *c = st->getCanon(*this) ;
 
 void PartialState::finalise(SymbolTable *st)
 {
-list<PartialDataType>::iterator ds = defs.begin();
+/*list<PartialDataType>::iterator ds = defs.begin();
 TypeAnnotation dummy;
   for(; ds!=defs.end() ;)
   {
@@ -809,10 +842,11 @@ TypeAnnotation dummy;
       printf("Skipping def %s\n", ds->tag.c_str());
       ++ds;
     }
-  }
+  }*/
 list<Decl>::iterator it = decls.begin();
   for(; it!=decls.end() ;)
   {
+    printf("Finalise decl: %s %s\n", it->type.str().c_str(), it->name.c_str());
     if(it->type.finalise(st, it->name, it->ann, waitingTags))
     {
       printf("Finalised %s\n", it->name.c_str());
@@ -824,4 +858,11 @@ list<Decl>::iterator it = decls.begin();
       ++it;
     }
   }
+}
+
+void PartialState::insert(PartialDataType p)
+{
+  int idx=0;
+  for(list<Decl>::iterator it = p.fields.begin(); it!=p.fields.end(); ++it)
+    deps.add(p, it->type, idx++);
 }
