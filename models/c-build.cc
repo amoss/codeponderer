@@ -826,8 +826,36 @@ const DataType *c = st->getCanon(*this) ;
         }
         */
 
+
+unsigned long hash(string s)
+{
+unsigned long acc=5381;        // Cheers to Bernstein for this one
+  for(string::const_iterator it=s.begin(); it!=s.end(); ++it) {
+    acc = (acc << 5) + acc ^ *it;
+  }
+  return acc;
+}
+
+string dotLabel(PartialDataType p)
+{
+  if( p.primitive==TypeAtom::Struct || p.primitive==TypeAtom::Union)
+    return ((TypeAtom)p).str() + " " + p.tag;
+  return ((TypeAtom)p).str();
+}
+
 void PartialState::finalise(SymbolTable *st)
 {
+list< pair<int, pair<PartialDataType,PartialDataType> > > edges = deps.edges();
+set< PartialDataType > nodes = deps.nodes();
+  for(set< PartialDataType >::iterator it=nodes.begin(); it!=nodes.end(); ++it)
+    printf("%lu [label=\"%s\"];\n", hash(dotLabel(*it)), dotLabel(*it).c_str());
+  for(list< pair<int, pair<PartialDataType,PartialDataType> > >::iterator it=edges.begin();
+      it!=edges.end(); ++it)
+  {
+    printf("%lu -> %lu [label=\"%d\"]; //", hash(dotLabel(it->second.first)), 
+                                         hash(dotLabel(it->second.second)), it->first);
+    printf("%s  %s\n", dotLabel(it->second.first).c_str(), dotLabel(it->second.second).c_str() );
+  }
 /*list<PartialDataType>::iterator ds = defs.begin();
 TypeAnnotation dummy;
   for(; ds!=defs.end() ;)
