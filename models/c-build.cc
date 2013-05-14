@@ -579,7 +579,7 @@ void dumpTokenStream(pANTLR3_COMMON_TOKEN_STREAM tokens)
   {
     pANTLR3_COMMON_TOKEN t = (pANTLR3_COMMON_TOKEN) vec->get(vec,i);
     if(t!=NULL)
-      printf("%s(%llu) ", cInCParserTokenNames[t->getType(t)], t->index);
+      printf("%s(%ld) ", cInCParserTokenNames[t->getType(t)], t->index);
   }
   printf("\n");
 }
@@ -681,7 +681,7 @@ TranslationU result;
         s = reparse(s, tokens, parser, target->scope); 
       pANTLR3_COMMON_TOKEN t = s->getToken(s);
       TokList stmtToks = extractChildren(s,0,-1);
-      printf("%s(%llu) ", cInCParserTokenNames[s->getType(s)], s->getToken(s)->index);
+      printf("%s(%ld) ", cInCParserTokenNames[s->getType(s)], s->getToken(s)->index);
       tmplForeach( list, pANTLR3_BASE_TREE, t, stmtToks )
         printf("%s ", cInCParserTokenNames[t->getType(t)]);
       tmplEnd
@@ -690,6 +690,17 @@ TranslationU result;
   tmplEnd
 
   return result;
+}
+
+const DataType *PartialDataType::makeCanon(SymbolTable *target, SymbolTable *namesp)
+{
+    DataType building = *this;
+    building.nFields = namesp->symbols.size();
+    building.fields  = new const DataType*[building.nFields];
+    int idx=0;
+    for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
+      building.fields[idx++] = namesp->symbols[f->name];
+    return target->getCanon(building);
 }
 
 /* Build data-types bottom-up.
@@ -739,18 +750,13 @@ bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation
         printf("Lookup tag %s -> %p %s\n", tag.c_str(), record, record->str().c_str());
       }
     }
-    DataType building = *this;
-    building.nFields = namesp->symbols.size();
-    building.fields  = new const DataType*[building.nFields];
-    int idx=0;
-    for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
-      building.fields[idx++] = namesp->symbols[f->name];
-    const DataType *c = st->getCanon(building);
+    const DataType *c = makeCanon(st, namesp);
     if(name.length()>0)
       st->symbols[name] = c;
     else
       st->tags[tag] = c;
     return true;
+
   }
 
 

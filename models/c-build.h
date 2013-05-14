@@ -2,6 +2,7 @@
 #include <exception>
 #include "models/util.h"
 #include "models/c-repr.h"
+#include "models/graph.h"
 
 TranslationU parseUnit(char *filename);
 
@@ -55,6 +56,8 @@ public:
     : DataType(copy), partial(false)
   {
   }
+
+  const DataType *makeCanon(SymbolTable *target, SymbolTable *namesp);
   bool finalise(SymbolTable *st, std::string name, TypeAnnotation ann, 
                 std::list<std::string> &fwd_refs);
 };
@@ -76,7 +79,10 @@ class PartialState
 public:
   std::list<PartialDataType> defs;
   std::list<Decl> decls;
+
   std::list<std::string> waitingTags;   // Blocked by a forward-reference
+  DiGraph<PartialDataType, int> deps;
+
   void finalise(SymbolTable *st);
   bool findTag(std::string tag);
 };
