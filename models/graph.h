@@ -38,11 +38,11 @@ public:
 
   typedef std::pair<Node,Node> NodePair;
   typedef std::pair<Edge,NodePair> Triple;
-  std::list<Triple> edges()
+  std::list<Triple> edges() const
   {
     std::list<Triple> result;
-    for(typename std::map<Node,std::set< std::pair<Node,Edge> > >::iterator it = storage.begin();  
-        it!=storage.end(); ++it)
+    for(typename std::map<Node,std::set< std::pair<Node,Edge> > >::const_iterator 
+        it = storage.begin(); it!=storage.end(); ++it)
     {
       for(typename std::set< std::pair<Node,Edge> >::iterator es=it->second.begin(); es!=it->second.end(); ++es)
         result.push_back( Triple(es->second, NodePair(it->first,es->first)));
@@ -50,11 +50,11 @@ public:
     return result;
   }
 
-  std::set<Node> nodes()
+  std::set<Node> nodes() const
   {
     std::set<Node> result;
-    for(typename std::map<Node,std::set< std::pair<Node,Edge> > >::iterator it = storage.begin();  
-        it!=storage.end(); ++it)
+    for(typename std::map<Node,std::set< std::pair<Node,Edge> > >::const_iterator 
+        it = storage.begin(); it!=storage.end(); ++it)
     {
       result.insert(it->first);
       for(typename std::set< std::pair<Node,Edge> >::iterator es=it->second.begin(); es!=it->second.end(); ++es)

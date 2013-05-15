@@ -9,26 +9,12 @@ using namespace std;
 bool DtComp::operator() (DataType const &a, DataType const &b) const
 {
 static FtComp fc;
-  if(a.primitive < b.primitive)
+  // Test both ways as only equality on base-fields should fall-through
+  if( static_cast<TypeAtom const&>(a) < static_cast<TypeAtom const&>(b) )
     return true;
-  if(b.primitive < a.primitive)
+  if( static_cast<TypeAtom const&>(b) < static_cast<TypeAtom const&>(a) )
     return false;
-  if(a.isConst && !b.isConst)
-    return true;
-  if(!a.isConst && b.isConst)
-    return false;
-  if(a.stars < b.stars)
-    return true;
-  if(b.stars < a.stars)
-    return false;
-  if(a.isUnsigned && !b.isUnsigned)
-    return true;
-  if(!a.isUnsigned && b.isUnsigned)
-    return false;
-  if(a.array < b.array)
-    return true;
-  if(b.array < a.array)
-    return false;
+
   if(a.primitive==DataType::Struct || a.primitive==DataType::Union)
   {
     if(a.nFields < b.nFields)
@@ -151,6 +137,21 @@ string TypeAtom::str() const
   for(int i=0; i<stars; i++)
     res << "*" ;
   return res.str();
+}
+
+bool TypeAtom::operator<(TypeAtom const &rhs) const
+{
+  if(primitive!=rhs.primitive)
+    return primitive < rhs.primitive;
+  if(stars!=rhs.stars)
+    return stars < rhs.stars;
+  if(array!=rhs.array)
+    return array < rhs.array;
+  if(isUnsigned != rhs.isUnsigned)
+    return isUnsigned < rhs.isUnsigned;
+  if(isConst != rhs.isConst)
+    return isConst < rhs.isConst;
+  return false;
 }
 
 string DataType::str() const

@@ -37,6 +37,7 @@ public:
   int  array;    // Number of dimensions
 
   TypeAtom();
+  bool operator <(TypeAtom const &rhs) const;
   std::string str() const;
 };
 

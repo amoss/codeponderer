@@ -60,8 +60,11 @@ public:
   std::string str() const;
   bool operator <(PartialDataType const &rhs) const
   {
-    if(primitive!=rhs.primitive)
-      return primitive < rhs.primitive;
+    if( TypeAtom::operator<(rhs) )
+      return true;
+    if( static_cast<TypeAtom const&>(rhs) < *this )
+      return false;
+    // Test both ways as only equality on base-fields should fall-through
     switch(primitive)
     {
       case DataType::Struct:
@@ -100,6 +103,7 @@ public:
   void insert(PartialDataType p);
   void finalise(SymbolTable *st);
   bool findTag(std::string tag);
+  void render(char *filename) const;
 };
 
 // TODO:

@@ -843,19 +843,42 @@ string dotLabel(PartialDataType p)
   return ((TypeAtom)p).str();
 }
 
-void PartialState::finalise(SymbolTable *st)
+void PartialState::render(char *filename) const
 {
+FILE *f = fopen(filename,"wt");
+  fprintf(f, "digraph{\n");
 list< pair<int, pair<PartialDataType,PartialDataType> > > edges = deps.edges();
-set< PartialDataType > nodes = deps.nodes();
+
+  // Project set of types onto expansion that includes pointed-to types.
+set< PartialDataType > bases, nodes = deps.nodes();
   for(set< PartialDataType >::iterator it=nodes.begin(); it!=nodes.end(); ++it)
-    printf("%lu [label=\"%s\"];\n", hash(dotLabel(*it)), dotLabel(*it).c_str());
+  {
+    if( it->stars > 0 )
+    {
+      PartialDataType ptrBase = *it;
+      ptrBase.stars=0;
+      bases.insert(ptrBase);
+    }
+  }
+  nodes.insert(bases.begin(), bases.end());
+
+  // Generate GraphViz format output
+  for(set< PartialDataType >::iterator it=nodes.begin(); it!=nodes.end(); ++it)
+    fprintf(f, "%lu [label=\"%s\"];\n", hash(dotLabel(*it)), dotLabel(*it).c_str());
   for(list< pair<int, pair<PartialDataType,PartialDataType> > >::iterator it=edges.begin();
       it!=edges.end(); ++it)
   {
-    printf("%lu -> %lu [label=\"%d\"]; //", hash(dotLabel(it->second.first)), 
+    fprintf(f, "%lu -> %lu [label=\"%d\"]; //", hash(dotLabel(it->second.first)), 
                                          hash(dotLabel(it->second.second)), it->first);
-    printf("%s  %s\n", dotLabel(it->second.first).c_str(), dotLabel(it->second.second).c_str() );
+    fprintf(f, "%s  %s\n", dotLabel(it->second.first).c_str(), dotLabel(it->second.second).c_str() );
   }
+  fprintf(f,"}\n");
+  fclose(f);
+}
+
+void PartialState::finalise(SymbolTable *st)
+{
+  render("crap.dot");
 /*list<PartialDataType>::iterator ds = defs.begin();
 TypeAnnotation dummy;
   for(; ds!=defs.end() ;)
@@ -891,6 +914,22 @@ list<Decl>::iterator it = decls.begin();
 void PartialState::insert(PartialDataType p)
 {
   int idx=0;
+  // Fold pointer types onto a common base
+  PartialDataType base=p;
+  if(p.stars>0) 
+  {
+    base.stars=0;
+    deps.add(p, base, -1);
+  }
   for(list<Decl>::iterator it = p.fields.begin(); it!=p.fields.end(); ++it)
+  {
+    // Same pointer fold for rhs of edge tuple
+    PartialDataType copy = it->type;
+    if(copy.stars>0)
+    {
+      copy.stars = 0;
+      deps.add(it->type, copy, -1);
+    }
     deps.add(p, it->type, idx++);
+  }
 }
