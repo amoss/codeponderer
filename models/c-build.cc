@@ -879,6 +879,17 @@ set< PartialDataType > bases, nodes = deps.nodes();
 void PartialState::finalise(SymbolTable *st)
 {
   render("crap.dot");
+  set<PartialDataType> sources = deps.sources();
+  for(set<PartialDataType>::iterator it=sources.begin(); it!=sources.end(); ++it)
+  {
+    printf("Source: %s\n", it->str().c_str());
+    set<PartialDataType> front = deps.reachable(*it);
+    for(set<PartialDataType>::iterator r=front.begin(); r!=front.end(); ++r)
+      printf("Reaches: %s\n", r->str().c_str());
+  }
+  set<PartialDataType> sinks = deps.sinks();
+  for(set<PartialDataType>::iterator it=sinks.begin(); it!=sinks.end(); ++it)
+    printf("Sink: %s\n", it->str().c_str());
 /*list<PartialDataType>::iterator ds = defs.begin();
 TypeAnnotation dummy;
   for(; ds!=defs.end() ;)

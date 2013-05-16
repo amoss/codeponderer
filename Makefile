@@ -37,7 +37,7 @@ MODOBJS=generated/c-repr.o generated/c-build.o generated/util.o
 models: $(MODOBJS)
 generated/c-repr.o: models/c-repr.cc models/c-repr.h
 	g++ -c models/c-repr.cc ${CFLAGS} -o generated/c-repr.o
-generated/c-build.o: models/c-build.cc models/c-build.h generated/c-repr.o
+generated/c-build.o: models/c-build.cc models/c-build.h generated/c-repr.o models/graph.h
 	g++ -c models/c-build.cc ${CFLAGS} -o generated/c-build.o
 generated/util.o: models/util.h models/util.cc
 	g++ -c models/util.cc ${CFLAGS} -o generated/util.o
