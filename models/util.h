@@ -12,9 +12,19 @@ extern "C" {
 // Also upgrading g++ on the knackered old version of Ubuntu that I use can wait until another day.
 #define foreach(T,V,C) for(T::iterator V = C.begin(); V!=C.end(); ++V)
 // This is definitely a bit messy... but it works :)
-#define tmplForeach(Tmpl,ElemT,V,C) { Tmpl<ElemT>::iterator V##It; ElemT V; for(V##It = C.begin(); V##It!=C.end(); ++V##It) {V=*V##It;
+#define tmplForeach(Tmpl,ElemT,V,C) \
+        { \
+          typename Tmpl<ElemT>::iterator V##It = C.begin(); \
+          for(; V##It!=C.end(); ++V##It) \
+          { \
+            ElemT const &V = *V##It;
 #define tmplEnd } }
-#define tmplForeachConst(Tmpl,ElemT,V,C) { Tmpl<ElemT>::const_iterator V##It; ElemT const V; for(V##It = C.begin(),V=*V##It; V##It!=C.end(); ++V##It,V=*V##It) {
+#define tmplForeachConst(Tmpl,ElemT,V,C) \
+        { \
+          typename Tmpl<ElemT>::const_iterator V##It; \
+          ElemT const &V; \
+          for(V##It = C.begin(),V=*V##It; V##It!=C.end(); ++V##It,V=*V##It) \
+          {
 
 typedef std::list<pANTLR3_BASE_TREE> TokList;
 

@@ -100,10 +100,12 @@ public:
   std::list<std::string> waitingTags;   // Blocked by a forward-reference
   DiGraph<PartialDataType, int> deps;
 
+  typedef std::pair<int, std::pair<PartialDataType,PartialDataType> > DiTrip; // For dep graph
+  void render(char *filename, std::list<DiTrip> &edges) const;
+
   void insert(PartialDataType p);
   void finalise(SymbolTable *st);
   bool findTag(std::string tag);
-  void render(char *filename) const;
 };
 
 // TODO:

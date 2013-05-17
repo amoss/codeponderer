@@ -6,6 +6,8 @@ static list<Decl> convertDECL(pANTLR3_BASE_TREE node, PartialState const &unreso
 static string convertPARAM(pANTLR3_BASE_TREE node, PartialDataType *target, PartialState const &unresolved);
 PartialDataType convertRecord(pANTLR3_BASE_TREE node, PartialState const &unresolved);
 
+#include "models/graph.cc"
+
 bool isTypeTok(pANTLR3_BASE_TREE tok)
 {
   switch(tok->getType(tok)) 
@@ -686,7 +688,7 @@ TranslationU result;
     printf("Func: %lu stmts %s %s\n",stmts.size(), "noname", target->type->str().c_str());
     tmplForeach(list, pANTLR3_BASE_TREE, s, stmts)
       if(s->getType(s) == STATEMENT )
-        s = reparse(s, tokens, parser, target->scope); 
+        reparse(s, tokens, parser, target->scope); 
       pANTLR3_COMMON_TOKEN t = s->getToken(s);
       TokList stmtToks = extractChildren(s,0,-1);
       printf("%s(%ld) ", cInCParserTokenNames[s->getType(s)], s->getToken(s)->index);
@@ -768,7 +770,7 @@ bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation
         if(tag.length()==0)
           printf("Anonymous!\n");
         else
-          printf("TAG %s %d\n", tag.c_str(), waiting.size());
+          printf("TAG %s %zu\n", tag.c_str(), waiting.size());
         const DataType *record = st->lookupTag(tag);
         if( record==NULL )
         {
@@ -843,11 +845,10 @@ string dotLabel(PartialDataType p)
   return ((TypeAtom)p).str();
 }
 
-void PartialState::render(char *filename) const
+void PartialState::render(char *filename, list<DiTrip> &edges) const
 {
 FILE *f = fopen(filename,"wt");
   fprintf(f, "digraph{\n");
-list< pair<int, pair<PartialDataType,PartialDataType> > > edges = deps.edges();
 
   // Project set of types onto expansion that includes pointed-to types.
 set< PartialDataType > bases, nodes = deps.nodes();
@@ -878,8 +879,13 @@ set< PartialDataType > bases, nodes = deps.nodes();
 
 void PartialState::finalise(SymbolTable *st)
 {
-  render("crap.dot");
+list<DiGraph<PartialDataType,int>::Triple> edges = deps.edges();
+  render("fwds.dot", edges);
+  DiGraph<PartialDataType,int> g2 = deps.flip();
+  edges = g2.edges();
+  render("bwds.dot", edges);
   set<PartialDataType> sources = deps.sources();
+  list<PartialDataType> sorted = deps.topSort(sources);
   for(set<PartialDataType>::iterator it=sources.begin(); it!=sources.end(); ++it)
   {
     printf("Source: %s\n", it->str().c_str());
