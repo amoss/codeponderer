@@ -19,9 +19,27 @@ template<class Node, class Edge>
 set<Node> DiGraph<Node,Edge>::next(Node const &src) const
 {
   set<Node> result;
-  set< DiGraph<Node,Edge>::Link > const &lookup = storage.at(src);
+  set< typename DiGraph<Node,Edge>::Link > const &lookup = storage.at(src);
   for(typename set< pair<Node,Edge> >::const_iterator it = lookup.begin(); it!=lookup.end(); ++it)
     result.insert( it->first );
+  return result;
+}
+
+template<class Node, class Edge>
+set<Node> DiGraph<Node,Edge>::previous(Node const &tar) const
+{
+  set<Node> result;
+  for(typename map<Node,set<DiGraph<Node,Edge>::Link> >::const_iterator 
+      it = storage.begin(); it!=storage.end(); ++it)
+  {
+    typename set<DiGraph<Node,Edge>::Link>::iterator l = it->second.begin();
+    for(; l!=it->second.end(); ++l)
+    {
+      Node const &ln = l->first;
+      if(ln==tar)     // Bizarre template instantiation error
+        result.add(it->first);
+    }
+  }
   return result;
 }
 
@@ -127,7 +145,7 @@ template<class Node, class Edge>
 DiGraph<Node,Edge> DiGraph<Node,Edge>::flip() const
 {
   DiGraph<Node,Edge> result;
-  typedef DiGraph<Node,Edge>::Triple Triple;
+  typedef typename DiGraph<Node,Edge>::Triple Triple;
   list<Triple> trips = edges();
   for(typename list<Triple>::iterator t=trips.begin(); t!=trips.end(); ++t)
     result.add(t->second.second, t->second.first, t->first);
@@ -138,16 +156,31 @@ template<class Node, class Edge>
 list<Node> DiGraph<Node,Edge>::topSort(set<Node> ready) const
 {
   list<Node> result;
+  set<Node> resCopy;
   while(ready.size()>0)
   {
     typename set<Node>::iterator pos = ready.begin();
     Node cur = *pos;
     result.push_back(cur);
+    resCopy.insert(cur);
 
     set<Node> front = next(cur);
+    front.erase(resCopy.begin(), resCopy.end());
+    front.erase(ready.begin(), ready.end());
     printf("%u\n",front.size());
     tmplForeach(set, Node, n, front)
-      printf("n=%s\n",n.str().c_str());
+      set<Node> srcs = previous(n);
+      bool blocked=false;
+      tmplForeach(set, Node, s, srcs)
+        printf("n=%s par=%s\n",n.str().c_str(), s.str().c_str());
+        if( resCopy.find(s)==resCopy.end() && ready.find(s)==ready.end() )
+        {
+          blocked=true;
+          break;
+        }
+      tmplEnd
+      if(!blocked)
+        ready.insert(n);
     tmplEnd
     // For every descendent of cur
       // For every parent of node

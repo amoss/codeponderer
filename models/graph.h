@@ -13,6 +13,7 @@ public:
   void add(Node const &n);
   void add(Node const &src, Node const &tar, Edge const &e);
   std::set<Node> next(Node const &src) const; 
+  std::set<Node> previous(Node const &src) const; 
   std::set<Edge> outgoing(Node const &src) const;
   typedef std::pair<Node,Node> NodePair;
   typedef std::pair<Edge,NodePair> Triple;
