@@ -1,4 +1,6 @@
 #include<set>
+#include<algorithm>
+#include<iterator>
 #include<list>
 #include<map>
 /* Assume that both Node and Edge can be passed-by-value / shallow copied.

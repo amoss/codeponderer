@@ -880,12 +880,20 @@ set< PartialDataType > bases, nodes = deps.nodes();
 void PartialState::finalise(SymbolTable *st)
 {
 list<DiGraph<PartialDataType,int>::Triple> edges = deps.edges();
-  render("fwds.dot", edges);
+  render((char*)"fwds.dot", edges);
   DiGraph<PartialDataType,int> g2 = deps.flip();
   edges = g2.edges();
-  render("bwds.dot", edges);
+  render((char*)"bwds.dot", edges);
   set<PartialDataType> sources = deps.sources();
   list<PartialDataType> sorted = deps.topSort(sources);
+  tmplForeach(list, PartialDataType, p, sorted)
+    printf("tops: %s\n", p.str().c_str());
+  tmplEnd
+  sources = g2.sources();
+  sorted = g2.topSort(sources);
+  tmplForeach(list, PartialDataType, p, sorted)
+    printf("bwdtops: %s\n", p.str().c_str());
+  tmplEnd
   for(set<PartialDataType>::iterator it=sources.begin(); it!=sources.end(); ++it)
   {
     printf("Source: %s\n", it->str().c_str());

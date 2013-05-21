@@ -29,15 +29,14 @@ template<class Node, class Edge>
 set<Node> DiGraph<Node,Edge>::previous(Node const &tar) const
 {
   set<Node> result;
-  for(typename map<Node,set<DiGraph<Node,Edge>::Link> >::const_iterator 
+  typedef pair<Node,Edge> Link;
+  for(typename map<Node,set<Link> >::const_iterator 
       it = storage.begin(); it!=storage.end(); ++it)
   {
-    typename set<DiGraph<Node,Edge>::Link>::iterator l = it->second.begin();
-    for(; l!=it->second.end(); ++l)
+    for(typename set<Link>::iterator l = it->second.begin(); l!=it->second.end(); ++l)
     {
-      Node const &ln = l->first;
-      if(ln==tar)     // Bizarre template instantiation error
-        result.add(it->first);
+      if(!(l->first < tar) && !(tar<l->first))  // If tar == node in the targets of l then l is pred.
+        result.insert(it->first);
     }
   }
   return result;
@@ -163,16 +162,24 @@ list<Node> DiGraph<Node,Edge>::topSort(set<Node> ready) const
     Node cur = *pos;
     result.push_back(cur);
     resCopy.insert(cur);
+    //printf("tops: processing %s\n", cur.str().c_str());
 
-    set<Node> front = next(cur);
-    front.erase(resCopy.begin(), resCopy.end());
-    front.erase(ready.begin(), ready.end());
-    printf("%u\n",front.size());
+    // The frontier is the set of nodes linked to by nodes that are ready that 
+    // are neither ready nor done themselves; the union of each front set.
+    set<Node> s2,front, s1 = next(cur);
+    //printf("og links: %u\n", s1.size());
+    set_difference(s1.begin(), s1.end(), ready.begin(), ready.end(),
+                   inserter(s2, s2.end()));
+    set_difference(s2.begin(), s2.end(), resCopy.begin(), resCopy.end(),
+                   inserter(front, front.end()));
+
+    //printf("og links (fresh): %u\n", front.size());
+
     tmplForeach(set, Node, n, front)
       set<Node> srcs = previous(n);
       bool blocked=false;
       tmplForeach(set, Node, s, srcs)
-        printf("n=%s par=%s\n",n.str().c_str(), s.str().c_str());
+        //printf("n=%s par=%s\n",n.str().c_str(), s.str().c_str());
         if( resCopy.find(s)==resCopy.end() && ready.find(s)==ready.end() )
         {
           blocked=true;
@@ -186,7 +193,7 @@ list<Node> DiGraph<Node,Edge>::topSort(set<Node> ready) const
       // For every parent of node
         // If parent is not ready or result then node is blocked
     // If node is not blocked then add to ready
-    break;
+    ready.erase(pos);
   }
   return result;
 }

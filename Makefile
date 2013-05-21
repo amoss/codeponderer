@@ -11,6 +11,8 @@ endif
 ifeq ($(SYS),Linux)
 CLIBS=-static -lantlr3c -Lbuild/lib
 RUNLIB=build/lib/libantlr3c.so
+GCC=gcc
+GPP=g++
 endif
 
 CFLAGS=-g -I. -Igenerated -Iantlr-3.1.3/runtime/C/include -Iantlr-3.1.3/runtime/C

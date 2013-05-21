@@ -74,6 +74,15 @@ public:
         return false;
     }
   }
+  /*bool operator ==(PartialDataType const &rhs) const
+  {
+    if( *this < rhs )
+      return false;
+    if( rhs < *this )
+      return false;
+    return true;
+  }*/
+
   const DataType *makeCanon(SymbolTable *target, SymbolTable *namesp);
   bool finalise(SymbolTable *st, std::string name, TypeAnnotation ann, 
                 std::list<std::string> &fwd_refs);
@@ -89,6 +98,10 @@ public:
     : name(n), type(t), ann(a)
   {
   }
+  /*~Decl()
+  {
+    printf("Skipping ~Decl on %s / %s\n", name.c_str(), type.str().c_str());
+  }*/
 };
 
 class PartialState
