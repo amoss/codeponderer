@@ -16,6 +16,35 @@ void DiGraph<Node,Edge>::add(Node const &src, Node const &tar, Edge const &e)
 }
 
 template<class Node, class Edge>
+void DiGraph<Node,Edge>::forceUpdate(Node const &node)
+{
+typedef pair<Node,Edge> Link;
+typename map<Node, set<Link> >::iterator outg = storage.find(node);
+  // Rewrite any links from the node
+  if(outg!=storage.end())
+  {
+    set< pair<Node,Edge> > links = outg->second;
+    storage.erase(outg);
+    storage[node] = links;
+  }
+  // Rewrite any links into the node
+  for(outg = storage.begin(); outg!=storage.end(); ++outg)
+  {
+    for(typename set<Link>::iterator l=outg->second.begin(); l!=outg->second.end();)
+    {
+      if(!(l->first<node) && !(node<l->first))
+      {
+        Edge e = l->second;
+        outg->second.erase(l++);      // Bumps before invalidation
+        outg->second.insert(pair<Node,Edge>(node,e));  // Should not revisit as below iterator
+      }
+      else
+        ++l;
+    }
+  }
+}
+
+template<class Node, class Edge>
 set<Node> DiGraph<Node,Edge>::next(Node const &src) const
 {
   set<Node> result;
@@ -175,10 +204,10 @@ list<Node> DiGraph<Node,Edge>::topSort(set<Node> ready) const
 
     //printf("og links (fresh): %u\n", front.size());
 
-    tmplForeach(set, Node, n, front)
+    tmplForeachConst(set, Node, n, front)      // Set iterators are const
       set<Node> srcs = previous(n);
       bool blocked=false;
-      tmplForeach(set, Node, s, srcs)
+      tmplForeachConst(set, Node, s, srcs)
         //printf("n=%s par=%s\n",n.str().c_str(), s.str().c_str());
         if( resCopy.find(s)==resCopy.end() && ready.find(s)==ready.end() )
         {

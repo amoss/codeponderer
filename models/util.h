@@ -17,14 +17,14 @@ extern "C" {
           typename Tmpl<ElemT>::iterator V##It = C.begin(); \
           for(; V##It!=C.end(); ++V##It) \
           { \
-            ElemT const &V = *V##It;
+            ElemT &V = *V##It;
 #define tmplEnd } }
 #define tmplForeachConst(Tmpl,ElemT,V,C) \
         { \
           typename Tmpl<ElemT>::const_iterator V##It; \
-          ElemT const &V; \
-          for(V##It = C.begin(),V=*V##It; V##It!=C.end(); ++V##It,V=*V##It) \
-          {
+          for(V##It = C.begin(); V##It!=C.end(); ++V##It) \
+          { \
+            ElemT const &V = *V##It;
 
 typedef std::list<pANTLR3_BASE_TREE> TokList;
 

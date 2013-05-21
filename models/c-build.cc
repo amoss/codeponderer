@@ -116,8 +116,8 @@ PartialDataType result;
       case UNION:
       case STRUCT:
       {
-        printf("Processing declspec TODO: (fwd)\n");
         result = convertRecord(tok, unresolved);
+        printf("Processed declspec: %s\n", result.str().c_str());
 
         break;
       }
@@ -533,7 +533,7 @@ int count = node->getChildCount(node);
     case STRUCT:
     {
       PartialDataType r = convertRecord(node, unresolved); 
-      printf("Processed puredef %s %d\n", r.tag.c_str(), r.partial);
+      printf("Processed puredef %s : %s\n", r.tag.c_str(), r.str().c_str());
 
       //unresolved.defs.push_back(r);
       unresolved.insert(r);     // Dependency graph functions as a queue
@@ -877,8 +877,59 @@ set< PartialDataType > bases, nodes = deps.nodes();
   fclose(f);
 }
 
+
+// false = definite difference, true = maybe equal
+bool similar(PartialDataType const &a, PartialDataType const &b)
+{
+  if(a.primitive!=b.primitive)
+    return false;
+  if(a.stars!=b.stars)
+    return false;
+  if(a.array!=b.array)
+    return false;
+  if(a.fields.size() != b.fields.size())
+    return false;
+  return true;
+}
+
+list<set<PartialDataType> > split(set<PartialDataType> const &orig)
+{
+list<set<PartialDataType> > buckets;
+  tmplForeachConst(set, PartialDataType, t, orig)
+    bool stored = false;
+    tmplForeach(list, set<PartialDataType>, b, buckets)
+      if( similar(t, *b.begin() ) )
+      {
+        b.insert(t);
+        stored = true;
+        break;
+      }
+    tmplEnd
+    if(!stored)
+    {
+      set<PartialDataType> newBucket;
+      newBucket.insert(t);
+      buckets.push_back(newBucket);
+    }
+  tmplEnd
+  return buckets;
+}
+
+
+
 void PartialState::finalise(SymbolTable *st)
 {
+set<PartialDataType> allNode = deps.nodes();
+list<set<PartialDataType> > buckets = split(allNode);
+  tmplForeach(list, set<PartialDataType>, b, buckets)
+    printf("Bucket(%u) ",b.size());
+    tmplForeachConst(set, PartialDataType, v, b)
+      printf("%s ",v.str().c_str());
+    tmplEnd
+    printf("\n");
+  tmplEnd
+
+
 list<DiGraph<PartialDataType,int>::Triple> edges = deps.edges();
   render((char*)"fwds.dot", edges);
   DiGraph<PartialDataType,int> g2 = deps.flip();
@@ -939,6 +990,9 @@ list<Decl>::iterator it = decls.begin();
 void PartialState::insert(PartialDataType p)
 {
   int idx=0;
+  // If there is a forward-ref to a record type then it must be updated
+  deps.forceUpdate(p);
+
   // Fold pointer types onto a common base
   PartialDataType base=p;
   if(p.stars>0) 

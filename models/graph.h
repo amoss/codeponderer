@@ -14,6 +14,7 @@ class DiGraph
 public:
   void add(Node const &n);
   void add(Node const &src, Node const &tar, Edge const &e);
+  void forceUpdate(Node const &n);
   std::set<Node> next(Node const &src) const; 
   std::set<Node> previous(Node const &src) const; 
   std::set<Edge> outgoing(Node const &src) const;
