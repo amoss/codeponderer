@@ -6,7 +6,7 @@
 
 using namespace std;
 
-bool DtComp::operator() (DataType const &a, DataType const &b) const
+/*bool DtComp::operator() (DataType const &a, DataType const &b) const
 {
 static FtComp fc;
   // Test both ways as only equality on base-fields should fall-through
@@ -55,17 +55,18 @@ static DtComp dc;
       return false;
   }
   return false;
-}
+}*/
 
 TypeAtom::TypeAtom()
-  : isUnsigned(false), isConst(false), stars(0), primitive(TypeAtom::Empty), array(0)
+  : isUnsigned(false), isConst(false), stars(0), primitive(TypeAtom::Empty), array(0),
+    tag("")
 {
 }
 
 /* Note: MUST initialise every field that is involved in the comparison otherwise it will
          produce an unstable ordering for std::set and all hell will break loose!
 */
-DataType::DataType()
+/*DataType::DataType()
   : nFields(0), fields(NULL), namesp(NULL)
 {
   // To avoid dependencies on c-init the intialisation is handled by the c-build module.
@@ -79,6 +80,7 @@ DataType::DataType(TypeAtom const &copy)
 bool compareFT(FuncType const &a, FuncType const &b)
 {
 }
+*/
 
 string TypeAtom::str() const
 {
@@ -89,43 +91,45 @@ string TypeAtom::str() const
     parts.push_back("unsigned");
   switch(primitive)
   {
-    case DataType::Empty:
+    case TypeAtom::Empty:
       parts.push_back("EMPTY");
       break;
-    case DataType::Ellipsis:
+    case TypeAtom::Ellipsis:
       parts.push_back("...");
       break;
-    case DataType::Void:
+    case TypeAtom::Void:
       parts.push_back("void");
       break;
-    case DataType::Int:
+    case TypeAtom::Int:
       parts.push_back("int");
       break;
-    case DataType::Long:
+    case TypeAtom::Long:
       parts.push_back("long");
       break;
-    case DataType::Char:
+    case TypeAtom::Char:
       parts.push_back("char");
       break;
-    case DataType::Float:
+    case TypeAtom::Float:
       parts.push_back("float");
       break;
-    case DataType::Double:
+    case TypeAtom::Double:
       parts.push_back("double");
       break;
-    case DataType::Short:
+    case TypeAtom::Short:
       parts.push_back("short");
       break;
-    case DataType::Struct:
+    case TypeAtom::Struct:
       parts.push_back("struct");
+      parts.push_back(tag);
       break;
-    case DataType::Union:
+    case TypeAtom::Union:
       parts.push_back("union");
+      parts.push_back(tag);
       break;
-    case DataType::Enum:
+    case TypeAtom::Enum:
       parts.push_back("enum");
       break;
-    case DataType::Function:
+    case TypeAtom::Function:
       //parts.push_back(fptr->retType->str());
       break;
     default:
@@ -139,7 +143,7 @@ string TypeAtom::str() const
   return res.str();
 }
 
-bool TypeAtom::operator<(TypeAtom const &rhs) const
+/*bool TypeAtom::operator<(TypeAtom const &rhs) const
 {
   if(primitive!=rhs.primitive)
     return primitive < rhs.primitive;
@@ -152,9 +156,9 @@ bool TypeAtom::operator<(TypeAtom const &rhs) const
   if(isConst != rhs.isConst)
     return isConst < rhs.isConst;
   return false;
-}
+}*/
 
-string DataType::str() const
+/*string DataType::str() const
 {
 stringstream res;
   res << ((TypeAtom)*this).str();
@@ -237,19 +241,50 @@ map<string,const DataType*>::const_iterator it = tags.find(name);
     return parent->lookupTag(name);
   return NULL;
 }
-
+*/
 void SymbolTable::dump()
 {
-map<string,const DataType*>::iterator it;
+map<string,TypeAtom>::iterator it;
   for(it=symbols.begin(); it!=symbols.end(); ++it)
-    printf("Decl: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+    printf("Decl: %s -> %s\n", it->first.c_str(), it->second.str().c_str());
   for(it=typedefs.begin(); it!=typedefs.end(); ++it)
-    printf("Type: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
-  for(it=tags.begin(); it!=tags.end(); ++it)
-    printf("Tag: %s -> %p = %s\n", it->first.c_str(), it->second, it->second->str().c_str());
+    printf("Type: %s -> %s\n", it->first.c_str(), it->second.str().c_str());
+map<string,list<Decl> >::iterator recIt;    
+  for(recIt=tags.begin(); recIt!=tags.end(); ++recIt)
+  {
+    printf("Tag: %s -> {", recIt->first.c_str());
+    for(list<Decl>::iterator d=recIt->second.begin(); d!=recIt->second.end(); ++d)
+      printf("%s:%s;", d->name.c_str(), d->type.str().c_str());
+    printf("}\n");
+  }
+/*
 map<string,Function *>::iterator fit;
   for(fit=functions.begin(); fit!=functions.end(); ++fit)
     printf("Function: %s -> %s\n", fit->first.c_str(), fit->second->type->str().c_str());
+    */
+}
+
+bool SymbolTable::validTypedef(string name)
+{
+  return typedefs.find(name)!=typedefs.end();
+}
+
+TypeAtom SymbolTable::getTypedef(string name) 
+{
+  return typedefs[name];
+}
+
+void SymbolTable::saveRecord(string name, list<Decl> &fields)
+{
+  printf("SAVING %s\n",name.c_str());
+  tags[name] = fields;    // Should overwrite forward refs
+}
+
+string SymbolTable::anonName()
+{
+stringstream res;
+  res << "__anon" << anonCount++;
+  return res.str();
 }
 
 TranslationU::TranslationU()

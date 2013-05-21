@@ -2,9 +2,9 @@
 
 using namespace std;
 
-static list<Decl> convertDECL(pANTLR3_BASE_TREE node, PartialState const &unresolved);
-static string convertPARAM(pANTLR3_BASE_TREE node, PartialDataType *target, PartialState const &unresolved);
-PartialDataType convertRecord(pANTLR3_BASE_TREE node, PartialState const &unresolved);
+static list<Decl> convertDECL(pANTLR3_BASE_TREE node, SymbolTable *st);
+static string convertPARAM(pANTLR3_BASE_TREE node, SymbolTable *st);
+TypeAtom convertRecord(pANTLR3_BASE_TREE node, SymbolTable *st);
 
 #include "models/graph.cc"
 
@@ -69,10 +69,10 @@ pANTLR3_BASE_TREE findTok(TokList toks, int tokType)
 //   TODO: (fwd)
 //     Decouple the parsing functions from the SymbolTable entirely. Return a list of Decl
 //     All the injection / canonisation code moves to finalise
-PartialDataType convertDeclSpec(TokList::iterator start, TokList::iterator end, 
-                                TypeAnnotation &ann, PartialState const &unresolved)
+TypeAtom convertDeclSpec(TokList::iterator start, TokList::iterator end, 
+                                TypeAnnotation &ann, SymbolTable *st)
 {
-PartialDataType result;
+TypeAtom result;
   while(start!=end)
   {
     pANTLR3_BASE_TREE tok = *start;
@@ -83,13 +83,13 @@ PartialDataType result;
         result.stars++;
         break;
 
-      case DOUBLE:   result.primitive = DataType::Double; break;
-      case FLOAT:    result.primitive = DataType::Float;  break;
-      case CHAR:     result.primitive = DataType::Char;   break;
-      case SHORT:    result.primitive = DataType::Short;  break;
-      case LONG:     result.primitive = DataType::Long;   break;
-      case INT:      result.primitive = DataType::Int;    break;
-      case VOID:     result.primitive = DataType::Void;   break;
+      case DOUBLE:   result.primitive = TypeAtom::Double; break;
+      case FLOAT:    result.primitive = TypeAtom::Float;  break;
+      case CHAR:     result.primitive = TypeAtom::Char;   break;
+      case SHORT:    result.primitive = TypeAtom::Short;  break;
+      case LONG:     result.primitive = TypeAtom::Long;   break;
+      case INT:      result.primitive = TypeAtom::Int;    break;
+      case VOID:     result.primitive = TypeAtom::Void;   break;
 
       case UNSIGNED: result.isUnsigned = true;            break;
       case AUTO:     ann.isAuto = true;                   break;
@@ -103,22 +103,14 @@ PartialDataType result;
       case ELLIPSIS:                                      break;
 
       case IDENT:
-        {
-          // TODO: (fwd) Need resolution code during finalisation
-          result.typedefName = (char*)tok->getText(tok)->chars;
-          //const DataType *theType = st->lookupTypedef( ... );
-          //if(theType==NULL)
-          //  throw BrokenTree(tok, "Unknown type");
-          //else
-          //  return *theType;
-          break;
-        }
+        if(!st->validTypedef((char*)tok->getText(tok)->chars))
+          throw BrokenTree(tok, "Unknown type");
+        return st->getTypedef((char*)tok->getText(tok)->chars);
       case UNION:
       case STRUCT:
       {
-        result = convertRecord(tok, unresolved);
+        result = convertRecord(tok, st);
         printf("Processed declspec: %s\n", result.str().c_str());
-
         break;
       }
       case ENUM :
@@ -142,16 +134,16 @@ PartialDataType result;
 //   TODO: (fwd)
 //     Decouple the parsing functions from the SymbolTable entirely. Return a list of Decl
 //     All the injection / canonisation code moves to finalise
-PartialDataType convertRecord(pANTLR3_BASE_TREE node, PartialState const &unresolved)
+TypeAtom convertRecord(pANTLR3_BASE_TREE node, SymbolTable *st)
 {
-PartialDataType res;
+TypeAtom res;
   printf("ConvertRecord:\n");
   dumpTree(node,1);
-  res.node = node;
+  //res.node = node;
   if( node->getType(node)==STRUCT )
-    res.primitive = DataType::Struct;
+    res.primitive = TypeAtom::Struct;
   else 
-    res.primitive = DataType::Union;
+    res.primitive = TypeAtom::Union;
 
   // If there is an IDENT? then process it separately from the DECL loop
 TokList cs = extractChildren(node,0,-1);
@@ -161,6 +153,11 @@ pANTLR3_BASE_TREE first = *cs.begin();
     cs.pop_front();
     res.tag = (char*)first->getText(first)->chars;
   }
+  else
+  {
+    res.tag = st->anonName();
+    printf("ANON: %s\n", res.tag.c_str());
+  }
 
 // When we call convertDECL it needs a SymbolTable to record the basetype+initdecl for each
 // declarator in the declaration. We can't use the real TU table as these declarations exist
@@ -168,15 +165,17 @@ pANTLR3_BASE_TREE first = *cs.begin();
 // we can drop the names but we need the declaration DataTypes in the correct order...
 // Type are canonical in private namespace... 
 
+list<Decl> record;
 
   tmplForeach(list, pANTLR3_BASE_TREE, f, cs)
     if( f->getType(f) == DECL )
     {
-      list<Decl> partial = convertDECL(f,unresolved);
-      res.fields.splice(res.fields.end(), partial); 
+      list<Decl> partial = convertDECL(f, st);
+      record.splice(record.end(), partial); 
     }
   tmplEnd
-  printf("Finished convertRecord on %s\n", res.str().c_str());
+  st->saveRecord(res.tag, record);    
+  printf("Finished convertRecord on %s : %s\n", res.tag.c_str(), res.str().c_str());
   return res;
 }
 
@@ -184,9 +183,11 @@ pANTLR3_BASE_TREE first = *cs.begin();
    declaration. Shallow-copy is valid on FuncType objects as they do not own
    any of the DataType objects pointed to - they are the canonical instances
    from a SymbolTable. */
-static FuncType convertParams(pANTLR3_BASE_TREE tok, PartialState const &unresolved)
+static TypeAtom convertParams(pANTLR3_BASE_TREE tok, SymbolTable *st)
 {
-FuncType result;
+TypeAtom fake;
+  return fake;
+/*FuncType result;
   // Count the PARAM children and check there are no non-PARAM children so that the
   // number is valid as an array allocation.
   TokList parCnts = extractChildren(tok, 0, -1);
@@ -222,7 +223,7 @@ FuncType result;
     }
     i++;
   tmplEnd
-  return result;
+  return result;*/
 }
 
 /* On calling the result is already initialised to a copy of the base-type from the 
@@ -231,11 +232,11 @@ FuncType result;
      Decouple the parsing functions from the SymbolTable entirely. Return a list of Decl
      All the injection / canonisation code moves to finalise
 */
-string convertInitDtor(PartialDataType &result, pANTLR3_BASE_TREE subTree,
-                       PartialState const &unresolved)
+string convertInitDtor(TypeAtom &result, pANTLR3_BASE_TREE subTree,
+                       SymbolTable *st)
 {
 char *identifier;
-FuncType f;
+TypeAtom f;
 TokList ptrQualToks, dtorToks, children = extractChildren(subTree,0,-1);
 
   // Separate the (STAR typeQualifier?)* prefix from the declarator
@@ -244,7 +245,7 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
   if(numDeclPars>1)
     throw BrokenTree(subTree,"Too many declPars - only one is valid");
   if(numDeclPars==1)
-    f = convertParams( findTok(dtorToks, DECLPAR), unresolved );
+    f = convertParams( findTok(dtorToks, DECLPAR), st );
 
   // Check the declName first as function-ptr processing is a major difference from
   // other declarations.
@@ -326,27 +327,21 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
      All the injection / canonisation code moves to finalise
 */
 
-static list<Decl> convertDECL(pANTLR3_BASE_TREE node, PartialState const &unresolved)
+static list<Decl> convertDECL(pANTLR3_BASE_TREE node, SymbolTable *st)
 {
 list<Decl> result;
 TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
   partitionList(children, typeToks, dtorToks, isNotDecl);
 
   TypeAnnotation ann;
-  PartialDataType base = convertDeclSpec(typeToks.begin(), typeToks.end(), 
-                                         ann, /* needed? */ unresolved); 
-  base.node = node;
+  TypeAtom base = convertDeclSpec(typeToks.begin(), typeToks.end(), 
+                                         ann, st);
+  //base.node = node;
 
   tmplForeach(list,pANTLR3_BASE_TREE,dtor,dtorToks)
-    PartialDataType decltype = base;
-    string name = convertInitDtor(decltype, dtor, unresolved);
-    if(decltype.partial)
-      printf("TODO: Handle pollution on %s\n", name.c_str());
-    else
-    {
-      // decl.finalise(st, name, ann);
-      result.push_back( Decl(name,decltype,ann) );
-    }
+    TypeAtom decltype = base;
+    string name = convertInitDtor(decltype, dtor, st);
+    result.push_back( Decl(name,decltype) );
   tmplEnd
   return result;
 }
@@ -390,8 +385,8 @@ bool prefix = true;
   tmplEnd
 }
 
-static string convertPARAM(pANTLR3_BASE_TREE node, PartialDataType *target,
-                           PartialState const &unresolved)
+static string convertPARAM(pANTLR3_BASE_TREE node, TypeAtom *target,
+                           SymbolTable *st)
 {
 TokList children = extractChildren(node,0,-1);
 
@@ -400,7 +395,7 @@ list<pANTLR3_BASE_TREE> typeToks, others;
   findTypeTokens(children, typeToks, others);
 
 TypeAnnotation ann;
-PartialDataType base = convertDeclSpec(typeToks.begin(), typeToks.end(), ann, unresolved); 
+TypeAtom base = convertDeclSpec(typeToks.begin(), typeToks.end(), ann, st); 
 TokList::iterator walk = others.begin();
   target->stars = 0;
   while(walk!=others.end())
@@ -452,8 +447,7 @@ TokList::iterator walk = others.begin();
 }
 
 
-static Function *convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node, 
-                             PartialState &unresolved)
+static Function *convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node)
 {
 pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
 char *identifier = (char*)idTok->getText(idTok)->chars;
@@ -465,21 +459,22 @@ TokList rest = extractChildren(node,2,-1);
 TokList::iterator child = rest.begin();
   takeWhile( child, rest.end(), params, isParam);
 TypeAnnotation ann;
-PartialDataType retType = convertDeclSpec(child, rest.end(), ann, unresolved); 
+TypeAtom retType = convertDeclSpec(child, rest.end(), ann, where.table); 
 
 
   // Once upon a time these parameters were parsed as declarations, back when the world was 
   // young and the token stream was flat. But it because necessary to indicate dtor boundaries
   // so that IDENTs could be resolved into symbol names and typedef'd names. Hence the 
   // slightly ugly construction here.
-typedef pair<DataType,string> Binding;
+/*typedef pair<DataType,string> Binding;
 list<Binding> pBinding;
   tmplForeach( list, pANTLR3_BASE_TREE, p, params)
     PartialDataType temp;
     string name = convertPARAM(p, &temp, unresolved);
     pBinding.push_back( pair<PartialDataType,string>(temp,name) );
-  tmplEnd
+  tmplEnd*/
 
+  return new Function(where.table);
   // Parse the parameters and build the FuncType
 /* TODO:
       Cannot fix functions until after the type canonicalisation is finished
@@ -508,7 +503,7 @@ Function *def = new Function(f,where.table);
 
 typedef pair<pANTLR3_BASE_TREE,Function*> NewRoot;    // Leftovers for second parse
 static void processTopLevel(pANTLR3_BASE_TREE node, TranslationU &tu, 
-                            list<NewRoot> &funcDefs, PartialState &unresolved)
+                            list<NewRoot> &funcDefs)
 {
 int type  = node->getType(node);
 int count = node->getChildCount(node);
@@ -518,25 +513,27 @@ int count = node->getChildCount(node);
     case SEMI:   return;
     case DECL:   
     {
-      list<Decl> decls = convertDECL(node, unresolved);
-      unresolved.decls.splice(unresolved.decls.end(), decls);
+      list<Decl> decls = convertDECL(node, tu.table);
+      tmplForeach(list, Decl, d, decls)
+        tu.table->symbols[d.name] = d.type;
+      tmplEnd
       break;
     }
     case FUNC:   
     {
-      Function *f = convertFUNC(tu, node, unresolved); 
-      funcDefs.push_back( NewRoot(node,f) );
+      Function *f = convertFUNC(tu, node);
+      //funcDefs.push_back( NewRoot(node,f) );
       break; 
     }
     // Pure definition, build the type in the tag namespace
     case UNION: 
     case STRUCT:
     {
-      PartialDataType r = convertRecord(node, unresolved); 
+      TypeAtom r = convertRecord(node, tu.table); 
       printf("Processed puredef %s : %s\n", r.tag.c_str(), r.str().c_str());
 
       //unresolved.defs.push_back(r);
-      unresolved.insert(r);     // Dependency graph functions as a queue
+      //unresolved.insert(r);     // Dependency graph functions as a queue
 
       /* All gone to finalise
       if( tu.table->tags.find(r.tag) != tu.table->tags.end())
@@ -607,13 +604,13 @@ pANTLR3_COMMON_TOKEN tok = node2->getToken(node2);
   tokens->p = tok->getTokenIndex(tok);
 cInCParser_declaration_return retVal2 = parser->declaration(parser);
 
-PartialState unresolved;  // empty for second pass
+//PartialState unresolved;  // empty for second pass
 // If it was possible to parse the STATEMENT tokens as a DECL then it is a declaration
 // IFF the typenames resolve in the SymbolTable. Otherwise it is just a weird expr.
   if( retVal2.tree->getType(retVal2.tree) == DECL )
   {
     try {
-      convertDECL(retVal2.tree, unresolved);
+      convertDECL(retVal2.tree, context);
       return retVal2.tree;
     }
     catch(BrokenTree bt)
@@ -644,7 +641,6 @@ cInCParser_translationUnit_return firstPass;
 
 /* Pass II: semantic analysis on the partial parsetree */
 list<NewRoot> funcDefs;
-PartialState unresolved;
 TranslationU result;
   /* Translation units with a single top-level declaration do not have a NIL node as parent. It only
      exists when the AST is a forest to act as a virtual root. */
@@ -655,7 +651,7 @@ TranslationU result;
       {
         try {
         processTopLevel((pANTLR3_BASE_TREE)firstPass.tree->getChild(firstPass.tree,i), 
-                        result, funcDefs, unresolved);
+                        result, funcDefs);
         }
         catch(BrokenTree bt) {
           printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
@@ -664,8 +660,8 @@ TranslationU result;
       }
     }
     else
-      processTopLevel(firstPass.tree, result, funcDefs, unresolved);
-    unresolved.finalise(result.table);
+      processTopLevel(firstPass.tree, result, funcDefs);
+    //unresolved.finalise(result.table);
   }
   catch(BrokenTree bt) {
     printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
@@ -685,7 +681,7 @@ TranslationU result;
     Function *target = f.second;
     pANTLR3_BASE_TREE body = (pANTLR3_BASE_TREE) f.first->getChild(f.first,1);
     list<pANTLR3_BASE_TREE> stmts = extractChildren(body,0,-1);
-    printf("Func: %lu stmts %s %s\n",stmts.size(), "noname", target->type->str().c_str());
+    //printf("Func: %lu stmts %s %s\n",stmts.size(), "noname", target->type->str().c_str());
     tmplForeach(list, pANTLR3_BASE_TREE, s, stmts)
       if(s->getType(s) == STATEMENT )
         reparse(s, tokens, parser, target->scope); 
@@ -702,7 +698,7 @@ TranslationU result;
   return result;
 }
 
-const DataType *PartialDataType::makeCanon(SymbolTable *target, SymbolTable *namesp)
+/*const DataType *PartialDataType::makeCanon(SymbolTable *target, SymbolTable *namesp)
 {
     DataType building = (TypeAtom)*this;
     building.nFields = namesp->symbols.size();
@@ -729,7 +725,7 @@ stringstream res;
     res << "}";
   }
   return res.str();
-}
+}*/
 
 /* Build data-types bottom-up.
    Resolve tag and typedef names, register in SymbolTable and canonise every part 
@@ -742,6 +738,7 @@ stringstream res;
    no way to handle puredefs in below       FIXED
    no error cases for typedef / tag resolution errors
 */
+/*
 bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation ann,
                                list<string> &waiting)
 {
@@ -801,7 +798,7 @@ const DataType *c = st->getCanon(*this) ;
   else
     st->symbols[name] = c;
   return true;
-}
+}*/
 
         /* TODO: (fwd)
         {
@@ -837,7 +834,7 @@ unsigned long acc=5381;        // Cheers to Bernstein for this one
   }
   return acc;
 }
-
+/*
 string dotLabel(PartialDataType p)
 {
   if( p.primitive==TypeAtom::Struct || p.primitive==TypeAtom::Union)
@@ -914,9 +911,9 @@ list<set<PartialDataType> > buckets;
   tmplEnd
   return buckets;
 }
+*/
 
-
-
+/*
 void PartialState::finalise(SymbolTable *st)
 {
 set<PartialDataType> allNode = deps.nodes();
@@ -955,21 +952,6 @@ list<DiGraph<PartialDataType,int>::Triple> edges = deps.edges();
   set<PartialDataType> sinks = deps.sinks();
   for(set<PartialDataType>::iterator it=sinks.begin(); it!=sinks.end(); ++it)
     printf("Sink: %s\n", it->str().c_str());
-/*list<PartialDataType>::iterator ds = defs.begin();
-TypeAnnotation dummy;
-  for(; ds!=defs.end() ;)
-  {
-    if(ds->finalise(st, "", dummy, waitingTags))
-    {
-      printf("Finalised def %s\n", ds->tag.c_str());
-      ds = defs.erase(ds);
-    }
-    else
-    {
-      printf("Skipping def %s\n", ds->tag.c_str());
-      ++ds;
-    }
-  }*/
 list<Decl>::iterator it = decls.begin();
   for(; it!=decls.end() ;)
   {
@@ -1011,4 +993,4 @@ void PartialState::insert(PartialDataType p)
     }
     deps.add(p, it->type, idx++);
   }
-}
+}*/

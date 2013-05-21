@@ -21,7 +21,7 @@ public:
 /* To allow for forward references (co-recursion in record definitions) this wrapper
    stores the tag-names of unresolved fields.
 */
-class Decl;
+/*class Decl;
 class PartialDataType : public TypeAtom
 {
 public:
@@ -51,11 +51,6 @@ public:
     : TypeAtom(), partial(false)
   {
   }
-  // Embed value
-  /*PartialDataType(DataType const &copy)
-    : DataType(copy), partial(false)
-  {
-  }*/
 
   std::string str() const;
   bool operator <(PartialDataType const &rhs) const
@@ -74,14 +69,6 @@ public:
         return false;
     }
   }
-  /*bool operator ==(PartialDataType const &rhs) const
-  {
-    if( *this < rhs )
-      return false;
-    if( rhs < *this )
-      return false;
-    return true;
-  }*/
 
   const DataType *makeCanon(SymbolTable *target, SymbolTable *namesp);
   bool finalise(SymbolTable *st, std::string name, TypeAnnotation ann, 
@@ -98,20 +85,16 @@ public:
     : name(n), type(t), ann(a)
   {
   }
-  /*~Decl()
-  {
-    printf("Skipping ~Decl on %s / %s\n", name.c_str(), type.str().c_str());
-  }*/
-};
+};*/
 
-class PartialState
+/*class PartialState
 {
 public:
   //std::list<PartialDataType> defs;
   std::list<Decl> decls;
 
   std::list<std::string> waitingTags;   // Blocked by a forward-reference
-  DiGraph<PartialDataType, int> deps;
+  //DiGraph<PartialDataType, int> deps;
 
   typedef std::pair<int, std::pair<PartialDataType,PartialDataType> > DiTrip; // For dep graph
   void render(char *filename, std::list<DiTrip> &edges) const;
@@ -119,7 +102,7 @@ public:
   void insert(PartialDataType p);
   void finalise(SymbolTable *st);
   bool findTag(std::string tag);
-};
+};*/
 
 // TODO:
 // How many places access the SymbolTable directly?
