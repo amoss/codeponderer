@@ -140,10 +140,12 @@ string TypeAtom::str() const
   res << joinStrings(parts,' ');
   for(int i=0; i<stars; i++)
     res << "*" ;
+  for(int i=0; i<array; i++)
+    res << "[]" ;
   return res.str();
 }
 
-/*bool TypeAtom::operator<(TypeAtom const &rhs) const
+bool TypeAtom::operator<(TypeAtom const &rhs) const
 {
   if(primitive!=rhs.primitive)
     return primitive < rhs.primitive;
@@ -155,8 +157,10 @@ string TypeAtom::str() const
     return isUnsigned < rhs.isUnsigned;
   if(isConst != rhs.isConst)
     return isConst < rhs.isConst;
+  if(tag != rhs.tag)
+    return tag < rhs.tag;
   return false;
-}*/
+}
 
 /*string DataType::str() const
 {
@@ -242,19 +246,39 @@ map<string,const DataType*>::const_iterator it = tags.find(name);
   return NULL;
 }
 */
+
+set<TypeAtom> uniqueValues( map<string,TypeAtom> const &src)
+{
+map<string,TypeAtom>::const_iterator it;
+set<TypeAtom> result;
+  for(it=src.begin(); it!=src.end(); ++it)
+    result.insert(it->second);
+  return result;
+}
+
+void transposeValues(const char *prefix, map<string,TypeAtom> const &src)
+{
+set<TypeAtom> u = uniqueValues(src);
+  tmplForeachConst(set, TypeAtom, t, u)
+    printf("%s %s:", prefix, t.str().c_str());
+    map<string,TypeAtom>::const_iterator it;
+    for(it=src.begin(); it!=src.end(); ++it)
+      if(it->second == t)
+        printf(" %s", it->first.c_str());
+    printf("\n");
+  tmplEnd
+}
+
 void SymbolTable::dump()
 {
+  transposeValues("Decl", symbols);
+  transposeValues("Type", typedefs);
 map<string,TypeAtom>::iterator it;
-  for(it=symbols.begin(); it!=symbols.end(); ++it)
-    printf("Decl: %s -> %s\n", it->first.c_str(), it->second.str().c_str());
-  for(it=typedefs.begin(); it!=typedefs.end(); ++it)
-    printf("Type: %s -> %s\n", it->first.c_str(), it->second.str().c_str());
-map<string,list<Decl> >::iterator recIt;    
+map<string,SymbolTable* >::iterator recIt;    
   for(recIt=tags.begin(); recIt!=tags.end(); ++recIt)
   {
     printf("Tag: %s -> {", recIt->first.c_str());
-    for(list<Decl>::iterator d=recIt->second.begin(); d!=recIt->second.end(); ++d)
-      printf("%s:%s;", d->name.c_str(), d->type.str().c_str());
+    recIt->second->dump();
     printf("}\n");
   }
 /*
@@ -274,9 +298,19 @@ TypeAtom SymbolTable::getTypedef(string name)
   return typedefs[name];
 }
 
-void SymbolTable::saveRecord(string name, list<Decl> &fields)
+void SymbolTable::saveRecord(string name, SymbolTable *recTable)
 {
-  tags[name] = fields;    // Should overwrite forward refs
+  tags[name] = recTable;    // Should overwrite forward refs
+}
+
+void SymbolTable::saveType(string name, TypeAtom &t)
+{
+  typedefs[name] = t;
+}
+
+void SymbolTable::saveDecl(string name, TypeAtom &t)
+{
+  symbols[name] = t;
 }
 
 string SymbolTable::anonName()

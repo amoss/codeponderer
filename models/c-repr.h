@@ -2,32 +2,9 @@
 #include <map>
 #include <string>
 
-/* The representation of a type in the program. Note the lack of STL containers, these
-   types are immutable - the only time that fields / functions etc are added is during
-   construction (conversion from the parser structures). Sticking to pointer arrays 
-   and integer counts leads to easier code to read/write than STL iterators. These objects
-   are shallow-copiable as all pointers are canoncial instances owned by the SymbolTable.
-   Empty is a null-object and Ellipsis is a special dummy in the SymbolTable to catch
-   vargs in functions. 
-
-   Homogeneity: every type in the C type-system can be represented by instances of this
-                class, those types that represent radically different entities (i.e.
-                functions are callable, records can be indexed) have a 
-                split-representation with the more specific representation hidden behind
-                a pointer. This allows DataTypes to be ordered, and thus allows a 
-                canonical store for each symbol table that removes aliasing of types.
-   Split:       the fields within AtomType are separate from the main class so that they
-                can be shared with PartialDataType in the build module.
-
-   primitive==Function           <-> fptr!=NULL
-   primitive in {Union,Struct}   <-> rptr!=NULL
-
-   A formal model of the C type-system can be found in:
+/*   A formal model of the C type-system can be found in:
      C formalised in HOL. Michael Norrish. UCAM-CL-TR-453 ISSN 1476-2986 
-   
 */
-
-
 
 // The atomic part of a type, extensible parts are stored in the SymbolTable.
 class TypeAtom
@@ -36,12 +13,17 @@ public:
   enum { Empty, Ellipsis, Int, Long, Char, Float, Double, Short, Struct, Union, Enum, 
          Void, Function } primitive;
   bool isUnsigned, isConst;
-  int  stars;    // Levels of indirection
-  int  array;    // Number of dimensions
-  std::string tag;
+  int  stars;         // Levels of indirection
+  int  array;         // Number of dimensions
+  std::string tag;    // Lookup for union/struct
 
   TypeAtom();
-  //bool operator <(TypeAtom const &rhs) const;    Might not need....
+  bool operator <(TypeAtom const &rhs) const;
+  bool operator==(TypeAtom const &rhs) const
+  {
+    return primitive==rhs.primitive && isUnsigned==rhs.isUnsigned && isConst==rhs.isConst
+        && stars==rhs.stars && array==rhs.array && tag==rhs.tag;
+  }
   std::string str() const;
 };
 
@@ -62,25 +44,6 @@ public:
   }
 };
 
-/*
-// Arbitrary ordering for Type objects that models equality for set-inclusion
-class DtComp
-{
-public:
-  bool operator() (DataType const &a, DataType const &b) const;
-};
-
-class FtComp
-{
-public:
-  bool operator() (FuncType const &a, FuncType const &b) const;
-};
-*/
-
-
-/* All DataType objects referenced in params must be canonical instances owned by a SymbolTable
-   object. It is assumed that FuncTypes can be shallow copied without problems.
-*/
 /*class FuncType
 {
 public:
@@ -148,7 +111,7 @@ public:
   SymbolTable *parent;
   std::map< std::string,TypeAtom > symbols;
   std::map< std::string,TypeAtom > typedefs;
-  std::map< std::string,std::list<Decl> > tags;       // Distinct names from typedefs
+  std::map< std::string,SymbolTable* > tags;       // Distinct names from typedefs
   //std::map< std::string,Function* > functions;  // Function definitions in this scope
   //std::map< std::string,FuncType* > funcRefs;   // Function types (ie pointers in this scope)
   /* As the above maps are defined over pointers we need a canonical address for a given type
@@ -158,7 +121,9 @@ public:
 
   bool validTypedef(std::string);
   TypeAtom getTypedef(std::string);
-  void saveRecord(std::string, std::list<Decl> &);
+  void saveRecord(std::string, SymbolTable *);
+  void saveType(std::string, TypeAtom &);
+  void saveDecl(std::string, TypeAtom &);
   void dump();
   /*
   const DataType *getCanon(DataType const &);     // Inserts if not present

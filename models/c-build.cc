@@ -2,7 +2,7 @@
 
 using namespace std;
 
-static list<Decl> convertDECL(pANTLR3_BASE_TREE node, SymbolTable *st);
+static void convertDECL(pANTLR3_BASE_TREE node, SymbolTable *st);
 static string convertPARAM(pANTLR3_BASE_TREE node, SymbolTable *st);
 TypeAtom convertRecord(pANTLR3_BASE_TREE node, SymbolTable *st);
 
@@ -159,17 +159,17 @@ pANTLR3_BASE_TREE first = *cs.begin();
 // we can drop the names but we need the declaration DataTypes in the correct order...
 // Type are canonical in private namespace... 
 
-list<Decl> record;
+SymbolTable *recTable = NULL;
   tmplForeach(list, pANTLR3_BASE_TREE, f, cs)
     if( f->getType(f) == DECL )
     {
-      list<Decl> partial = convertDECL(f, st);
-      record.splice(record.end(), partial); 
+      if(recTable==NULL) recTable = new SymbolTable(st);
+      convertDECL(f, recTable);
     }
   tmplEnd
   // If there is no compound then it is not a definition so skip updating the tag
-  if( record.size()>0 )
-    st->saveRecord(res.tag, record);    
+  if( recTable!=NULL )
+    st->saveRecord(res.tag, recTable);    
   return res;
 }
 
@@ -312,30 +312,24 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
 /* We do not get bitten by the identifier/typename ambiguity at this point because the
    IDENTS for symbol names are inside the DECL sub-tree for an initDtor while typenames
    are not. 
-   TODO: (fwd)
-     Decouple the parsing functions from the SymbolTable entirely. Return a list of Decl
-     All the injection / canonisation code moves to finalise
 */
 
-static list<Decl> convertDECL(pANTLR3_BASE_TREE node, SymbolTable *st)
+static void convertDECL(pANTLR3_BASE_TREE node, SymbolTable *st)
 {
-list<Decl> result;
 TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
   partitionList(children, typeToks, dtorToks, isNotDecl);
 
   TypeAnnotation ann;
   TypeAtom base = convertDeclSpec(typeToks.begin(), typeToks.end(), 
                                          ann, st);
-  //base.node = node;
 
   tmplForeach(list,pANTLR3_BASE_TREE,dtor,dtorToks)
     Decl d = convertInitDtor(base, dtor, st);
     if(ann.isTypedef)
-      printf("Typedef: %s %s\n", d.name.c_str(), d.type.str().c_str());
+      st->saveType(d.name, d.type);
     else
-      result.push_back( d );
+      st->saveDecl(d.name, d.type);
   tmplEnd
-  return result;
 }
 
 /* This is where we resolve typenames / symbol names. Until now both are flushed down from the
@@ -505,10 +499,7 @@ int count = node->getChildCount(node);
     case SEMI:   return;
     case DECL:   
     {
-      list<Decl> decls = convertDECL(node, tu.table);
-      tmplForeach(list, Decl, d, decls)
-        tu.table->symbols[d.name] = d.type;
-      tmplEnd
+      convertDECL(node, tu.table);  // Updates table
       break;
     }
     case FUNC:   
