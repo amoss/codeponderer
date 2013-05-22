@@ -18,40 +18,7 @@ public:
   const char *what() const throw () { return explain; }
 };
 
-/* To allow for forward references (co-recursion in record definitions) this wrapper
-   stores the tag-names of unresolved fields.
-*/
-/*class Decl;
-class PartialDataType : public TypeAtom
-{
-public:
-  bool partial;
-
-  // Case 1.
-  //    struct fwd *blah;
-  // Case 2.
-  //    struct { struct fwd *blah; }
-  // Case 3.
-  //    void f( struct fwd *blah; }
-
-
-  // Partial = DataType (value rather than const* )  |  tagname (must be record-type)...
-
-  // Decl :=
-  //   Partial name 
-  // can either inject into SymbolTable or stick in a list...
-
-  pANTLR3_BASE_TREE node;
-  std::string tag;
-  std::string typedefName;
-  std::list<Decl> fields;
-
-  // Empty value
-  PartialDataType() 
-    : TypeAtom(), partial(false)
-  {
-  }
-
+/*
   std::string str() const;
   bool operator <(PartialDataType const &rhs) const
   {
@@ -69,47 +36,10 @@ public:
         return false;
     }
   }
+*/
 
-  const DataType *makeCanon(SymbolTable *target, SymbolTable *namesp);
-  bool finalise(SymbolTable *st, std::string name, TypeAnnotation ann, 
-                std::list<std::string> &fwd_refs);
-};
 
-class Decl
-{
-public:
-  std::string name;
-  PartialDataType type;
-  TypeAnnotation ann;
-  Decl(std::string n, PartialDataType t, TypeAnnotation a) 
-    : name(n), type(t), ann(a)
-  {
-  }
-};*/
 
-/*class PartialState
-{
-public:
-  //std::list<PartialDataType> defs;
-  std::list<Decl> decls;
-
-  std::list<std::string> waitingTags;   // Blocked by a forward-reference
-  //DiGraph<PartialDataType, int> deps;
-
-  typedef std::pair<int, std::pair<PartialDataType,PartialDataType> > DiTrip; // For dep graph
-  void render(char *filename, std::list<DiTrip> &edges) const;
-
-  void insert(PartialDataType p);
-  void finalise(SymbolTable *st);
-  bool findTag(std::string tag);
-};*/
-
-// TODO:
-// How many places access the SymbolTable directly?
-//    Merge these into a single point: PartialDataType::finalise?
-// How to store the parts that cannot currently be resolved?
-//    Class with partial records and decls?
-// How to finalise (compute isomorphisms of) co-recursive types?
 // Ideas:
 //   Current problems are a form of pollution - what is the slice of the
 //   code that touches a given type. Would be interesting to compute this

@@ -220,16 +220,12 @@ TypeAtom fake;
   return result;*/
 }
 
-/* On calling the result is already initialised to a copy of the base-type from the 
-   declaration. 
-   TODO: (fwd)
-     Decouple the parsing functions from the SymbolTable entirely. Return a list of Decl
-     All the injection / canonisation code moves to finalise
+/* Start with a copy of the base-type from the initial tokens, add anything in the
+   init-dtor onto it.
 */
-string convertInitDtor(TypeAtom &result, pANTLR3_BASE_TREE subTree,
-                       SymbolTable *st)
+Decl convertInitDtor(TypeAtom const &base, pANTLR3_BASE_TREE subTree, SymbolTable *st)
 {
-char *identifier;
+Decl result = Decl("",base);
 TypeAtom f;
 TokList ptrQualToks, dtorToks, children = extractChildren(subTree,0,-1);
 
@@ -259,7 +255,7 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
       pANTLR3_BASE_TREE id2Tok = *(++fpChildren.begin());
       if( id2Tok->getType(id2Tok)!=IDENT )
         throw BrokenTree(idTok, "FPTR did not contain IDENT");
-      identifier = (char *)id2Tok->getText(id2Tok)->chars;
+      result.name = (char *)id2Tok->getText(id2Tok)->chars;
 
       // There must be exactly one declPar
       if(numDeclPars==0)
@@ -279,7 +275,7 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
 
     // Process: IDENT 
     case IDENT:
-      identifier = (char*)idTok->getText(idTok)->chars;
+      result.name = (char*)idTok->getText(idTok)->chars;
       if(numDeclPars==1)
       {
         /* TODO: (fwd) canonisation is building move to finalisation
@@ -292,7 +288,7 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
       }
       else
       {
-        result.stars += countTokTypes(ptrQualToks,STAR);
+        result.type.stars += countTokTypes(ptrQualToks,STAR);
       }
       break;
 
@@ -306,11 +302,11 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
     switch( t->getType(t) )
     {
       case OPENSQ:
-        result.array++;
+        result.type.array++;
         break;
     }
   }
-  return identifier;
+  return result;
 }
 
 /* We do not get bitten by the identifier/typename ambiguity at this point because the
@@ -333,9 +329,11 @@ TokList typeToks, dtorToks, children = extractChildren(node,0,-1);
   //base.node = node;
 
   tmplForeach(list,pANTLR3_BASE_TREE,dtor,dtorToks)
-    TypeAtom decltype = base;
-    string name = convertInitDtor(decltype, dtor, st);
-    result.push_back( Decl(name,decltype) );
+    Decl d = convertInitDtor(base, dtor, st);
+    if(ann.isTypedef)
+      printf("Typedef: %s %s\n", d.name.c_str(), d.type.str().c_str());
+    else
+      result.push_back( d );
   tmplEnd
   return result;
 }
@@ -666,134 +664,6 @@ TranslationU result;
   return result;
 }
 
-/*const DataType *PartialDataType::makeCanon(SymbolTable *target, SymbolTable *namesp)
-{
-    DataType building = (TypeAtom)*this;
-    building.nFields = namesp->symbols.size();
-    building.fields  = new const DataType*[building.nFields];
-    int idx=0;
-    for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
-      building.fields[idx++] = namesp->symbols[f->name];
-    return target->getCanon(building);
-}
-
-string PartialDataType::str() const
-{
-stringstream res;
-  res << ((TypeAtom)*this).str();
-  if(primitive==TypeAtom::Struct || primitive==TypeAtom::Union)
-  {
-    res << " " << tag << " ";
-    res << "{ ";
-    for(list<Decl>::const_iterator it = fields.begin(); it!=fields.end(); ++it)
-    {
-      res << it->type.str();
-      res << "; ";
-    }
-    res << "}";
-  }
-  return res.str();
-}*/
-
-/* Build data-types bottom-up.
-   Resolve tag and typedef names, register in SymbolTable and canonise every part 
-   of the type. This operation does not need to be atomic, if sub-parts succeed and
-   the whole fails then it will be repeated later - the canonical values of the 
-   sub-parts will not change inbetween.
-
-  More TODO (fwd):
-   name parameter implies this is a decl.   FIXED
-   no way to handle puredefs in below       FIXED
-   no error cases for typedef / tag resolution errors
-*/
-/*
-bool PartialDataType::finalise(SymbolTable *st, std::string name, TypeAnnotation ann,
-                               list<string> &waiting)
-{
-  if(partial)
-    return false;
-
-  if(primitive==DataType::Struct || primitive==DataType::Union)
-  {
-    SymbolTable *namesp = new SymbolTable(st);
-    for(list<Decl>::iterator f=fields.begin(); f!=fields.end(); ++f)
-      if(!f->type.finalise(namesp, f->name, f->ann, waiting))
-      {
-        delete namesp;
-        printf("Pushing %s to waiting\n", tag.c_str());
-        waiting.push_back(tag);
-        return false;
-      }
-    if(fields.size() == 0) {
-      if(name.size()==0)
-      {
-        printf("Forward ref %s\n", tag.c_str());
-        waiting.push_back(tag);
-        return true;
-      }
-      else {
-        if(tag.length()==0)
-          printf("Anonymous!\n");
-        else
-          printf("TAG %s %zu\n", tag.c_str(), waiting.size());
-        const DataType *record = st->lookupTag(tag);
-        if( record==NULL )
-        {
-          tmplForeach(list, string, t, waiting)
-            printf("Iterate?\n");
-            printf("%s\n",t.c_str());
-            if( t==tag )
-              return false;
-          tmplEnd
-          throw BrokenTree(node, "Unknown tag used");
-        }
-        printf("Lookup tag %s -> %p %s\n", tag.c_str(), record, record->str().c_str());
-      }
-    }
-    const DataType *c = makeCanon(st, namesp);
-    if(name.length()>0)
-      st->symbols[name] = c;
-    else
-      st->tags[tag] = c;
-    return true;
-
-  }
-
-
-const DataType *c = st->getCanon(*this) ;
-  if(ann.isTypedef)
-    st->typedefs[name] = c;
-  else
-    st->symbols[name] = c;
-  return true;
-}*/
-
-        /* TODO: (fwd)
-        {
-          // Decide if the tag has been resolved yet, or is a forward-reference
-          printf("Processed %s\n", result.tag.c_str());
-          if( result.nFields==0 )   // Using a tag with no compound
-          {
-            const DataType *tagDef = st->lookupTag(result.tag);
-            if(tagDef==NULL)
-            {
-              // Use of a tagname that is a forward-reference
-              if( !unresolved.findTag(result.tag) )
-                throw BrokenTree(tok,"Unknown tag used");
-              result.partial = true;
-              return result;
-            }
-            result = *tagDef;
-            // TODO: If the struct was initialised by a forward-reference then we cannot pass it by value
-            //       as no value has been constructed. Using the const DataType* would break the 
-            //       interface in use here...
-          }
-          else                      // Defining and using a tag
-            st->tags[result.tag] = st->getCanon(result);
-        }
-        */
-
-
 unsigned long hash(string s)
 {
 unsigned long acc=5381;        // Cheers to Bernstein for this one
@@ -841,124 +711,4 @@ set< PartialDataType > bases, nodes = deps.nodes();
   fprintf(f,"}\n");
   fclose(f);
 }
-
-
-// false = definite difference, true = maybe equal
-bool similar(PartialDataType const &a, PartialDataType const &b)
-{
-  if(a.primitive!=b.primitive)
-    return false;
-  if(a.stars!=b.stars)
-    return false;
-  if(a.array!=b.array)
-    return false;
-  if(a.fields.size() != b.fields.size())
-    return false;
-  return true;
-}
-
-list<set<PartialDataType> > split(set<PartialDataType> const &orig)
-{
-list<set<PartialDataType> > buckets;
-  tmplForeachConst(set, PartialDataType, t, orig)
-    bool stored = false;
-    tmplForeach(list, set<PartialDataType>, b, buckets)
-      if( similar(t, *b.begin() ) )
-      {
-        b.insert(t);
-        stored = true;
-        break;
-      }
-    tmplEnd
-    if(!stored)
-    {
-      set<PartialDataType> newBucket;
-      newBucket.insert(t);
-      buckets.push_back(newBucket);
-    }
-  tmplEnd
-  return buckets;
-}
 */
-
-/*
-void PartialState::finalise(SymbolTable *st)
-{
-set<PartialDataType> allNode = deps.nodes();
-list<set<PartialDataType> > buckets = split(allNode);
-  tmplForeach(list, set<PartialDataType>, b, buckets)
-    printf("Bucket(%u) ",b.size());
-    tmplForeachConst(set, PartialDataType, v, b)
-      printf("%s ",v.str().c_str());
-    tmplEnd
-    printf("\n");
-  tmplEnd
-
-
-list<DiGraph<PartialDataType,int>::Triple> edges = deps.edges();
-  render((char*)"fwds.dot", edges);
-  DiGraph<PartialDataType,int> g2 = deps.flip();
-  edges = g2.edges();
-  render((char*)"bwds.dot", edges);
-  set<PartialDataType> sources = deps.sources();
-  list<PartialDataType> sorted = deps.topSort(sources);
-  tmplForeach(list, PartialDataType, p, sorted)
-    printf("tops: %s\n", p.str().c_str());
-  tmplEnd
-  sources = g2.sources();
-  sorted = g2.topSort(sources);
-  tmplForeach(list, PartialDataType, p, sorted)
-    printf("bwdtops: %s\n", p.str().c_str());
-  tmplEnd
-  for(set<PartialDataType>::iterator it=sources.begin(); it!=sources.end(); ++it)
-  {
-    printf("Source: %s\n", it->str().c_str());
-    set<PartialDataType> front = deps.reachable(*it);
-    for(set<PartialDataType>::iterator r=front.begin(); r!=front.end(); ++r)
-      printf("Reaches: %s\n", r->str().c_str());
-  }
-  set<PartialDataType> sinks = deps.sinks();
-  for(set<PartialDataType>::iterator it=sinks.begin(); it!=sinks.end(); ++it)
-    printf("Sink: %s\n", it->str().c_str());
-list<Decl>::iterator it = decls.begin();
-  for(; it!=decls.end() ;)
-  {
-    printf("Finalise decl: %s %s\n", it->type.str().c_str(), it->name.c_str());
-    if(it->type.finalise(st, it->name, it->ann, waitingTags))
-    {
-      printf("Finalised %s\n", it->name.c_str());
-      it = decls.erase(it);
-    }
-    else
-    {
-      printf("Skipping unresolved %s\n", it->name.c_str());
-      ++it;
-    }
-  }
-}
-
-void PartialState::insert(PartialDataType p)
-{
-  int idx=0;
-  // If there is a forward-ref to a record type then it must be updated
-  deps.forceUpdate(p);
-
-  // Fold pointer types onto a common base
-  PartialDataType base=p;
-  if(p.stars>0) 
-  {
-    base.stars=0;
-    deps.add(p, base, -1);
-  }
-  for(list<Decl>::iterator it = p.fields.begin(); it!=p.fields.end(); ++it)
-  {
-    // Same pointer fold for rhs of edge tuple
-    PartialDataType copy = it->type;
-    if(copy.stars>0)
-    {
-      copy.stars = 0;
-      deps.add(it->type, copy, -1);
-    }
-    deps.add(p, it->type, idx++);
-  }
-}*/
