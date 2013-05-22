@@ -276,7 +276,7 @@ TypeAtom SymbolTable::getTypedef(string name)
 
 void SymbolTable::saveRecord(string name, list<Decl> &fields)
 {
-  printf("SAVING %s\n",name.c_str());
+  printf("SAVING %s %u\n",name.c_str(), fields.size());
   tags[name] = fields;    // Should overwrite forward refs
 }
 

@@ -174,8 +174,13 @@ list<Decl> record;
       record.splice(record.end(), partial); 
     }
   tmplEnd
-  st->saveRecord(res.tag, record);    
+  // If there is no compound then it is not a definition so skip updating the tag
+  if( record.size()>0 )
+    st->saveRecord(res.tag, record);    
   printf("Finished convertRecord on %s : %s\n", res.tag.c_str(), res.str().c_str());
+  tmplForeach(list, Decl, f, record)
+    printf("  Field: %s : %s\n", f.name.c_str(), f.type.str().c_str());
+  tmplEnd
   return res;
 }
 
