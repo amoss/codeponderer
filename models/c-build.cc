@@ -110,7 +110,6 @@ TypeAtom result;
       case STRUCT:
       {
         result = convertRecord(tok, st);
-        printf("Processed declspec: %s\n", result.str().c_str());
         break;
       }
       case ENUM :
@@ -137,8 +136,6 @@ TypeAtom result;
 TypeAtom convertRecord(pANTLR3_BASE_TREE node, SymbolTable *st)
 {
 TypeAtom res;
-  printf("ConvertRecord:\n");
-  dumpTree(node,1);
   //res.node = node;
   if( node->getType(node)==STRUCT )
     res.primitive = TypeAtom::Struct;
@@ -154,10 +151,7 @@ pANTLR3_BASE_TREE first = *cs.begin();
     res.tag = (char*)first->getText(first)->chars;
   }
   else
-  {
     res.tag = st->anonName();
-    printf("ANON: %s\n", res.tag.c_str());
-  }
 
 // When we call convertDECL it needs a SymbolTable to record the basetype+initdecl for each
 // declarator in the declaration. We can't use the real TU table as these declarations exist
@@ -166,7 +160,6 @@ pANTLR3_BASE_TREE first = *cs.begin();
 // Type are canonical in private namespace... 
 
 list<Decl> record;
-
   tmplForeach(list, pANTLR3_BASE_TREE, f, cs)
     if( f->getType(f) == DECL )
     {
@@ -177,10 +170,6 @@ list<Decl> record;
   // If there is no compound then it is not a definition so skip updating the tag
   if( record.size()>0 )
     st->saveRecord(res.tag, record);    
-  printf("Finished convertRecord on %s : %s\n", res.tag.c_str(), res.str().c_str());
-  tmplForeach(list, Decl, f, record)
-    printf("  Field: %s : %s\n", f.name.c_str(), f.type.str().c_str());
-  tmplEnd
   return res;
 }
 
@@ -533,33 +522,7 @@ int count = node->getChildCount(node);
     // Pure definition, build the type in the tag namespace
     case UNION: 
     case STRUCT:
-    {
-      TypeAtom r = convertRecord(node, tu.table); 
-      printf("Processed puredef %s : %s\n", r.tag.c_str(), r.str().c_str());
-
-      //unresolved.defs.push_back(r);
-      //unresolved.insert(r);     // Dependency graph functions as a queue
-
-      /* All gone to finalise
-      if( tu.table->tags.find(r.tag) != tu.table->tags.end())
-      {
-        // TODO: This won't work, after we insert the stolen fields the value of the DataType has 
-        //       changed so the ordering and equality guarantees are affected. It could collide with
-        //       an existing type, but be stored separately...
-        DataType *orig = (DataType*)tu.table->tags[r.tag];  // Cast out const... could break uniqueness!!
-        if( orig->nFields > 0 )
-          throw BrokenTree(node, "Struct redefines tagname");
-        orig->nFields = r.nFields;
-        orig->fields = new const DataType *[orig->nFields];
-        //memcpy(orig->fields, r.fields, sizeof(const DataType*[orig->nFields]));  // Steal pointers
-        printf("Repeat - filled in struct def\n");
-      }
-      else
-      {
-        printf("New Rec: %s\n", r.str().c_str() );
-        tu.table->tags[r.tag] = tu.table->getCanon(r);
-      }*/
-    }
+      convertRecord(node, tu.table);  // Updates tag in SymbolTable
       break;
     default:
       printf("Unknown Type %u Children %u ", type, count);
