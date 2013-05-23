@@ -3,7 +3,7 @@
 using namespace std;
 
 static void convertDECL(pANTLR3_BASE_TREE node, SymbolTable *st);
-static string convertPARAM(pANTLR3_BASE_TREE node, SymbolTable *st);
+static void convertPARAM(pANTLR3_BASE_TREE node, Decl *target, SymbolTable *st);
 TypeAtom convertRecord(pANTLR3_BASE_TREE node, SymbolTable *st);
 
 #include "models/graph.cc"
@@ -177,11 +177,9 @@ SymbolTable *recTable = NULL;
    declaration. Shallow-copy is valid on FuncType objects as they do not own
    any of the DataType objects pointed to - they are the canonical instances
    from a SymbolTable. */
-static TypeAtom convertParams(pANTLR3_BASE_TREE tok, SymbolTable *st)
+static FuncType convertParams(pANTLR3_BASE_TREE tok, SymbolTable *st)
 {
-TypeAtom fake;
-  return fake;
-/*FuncType result;
+FuncType result;
   // Count the PARAM children and check there are no non-PARAM children so that the
   // number is valid as an array allocation.
   TokList parCnts = extractChildren(tok, 0, -1);
@@ -192,8 +190,7 @@ TypeAtom fake;
 
   // Allocate storage
   result.nParams = parCnts.size();
-  result.params  = new const DataType*[ result.nParams ];
-  result.paramNames = new string[ result.nParams ];
+  result.params  = new Decl[ result.nParams ];
 
   // Initialise parameters
   int i=0;
@@ -202,22 +199,16 @@ TypeAtom fake;
     //       convertPARAM. It could simplify this to move it there.
     if( parTok->getType(parTok) == ELLIPSIS )
     {
-      result.paramNames[i] = "...";
-      DataType t;
-      t.primitive = DataType::Ellipsis;
-      // TODO: (fwd) finalisation code for building
-      // result.params[i] = st->getCanon(t); 
+      result.params[i].name = "...";
+      result.params[i].type.primitive = TypeAtom::Ellipsis;
     }
     else
     {
-      PartialDataType temp;
-      result.paramNames[i] = convertPARAM(parTok, &temp, unresolved);
-      // TODO: (fwd) finalisation code for building
-      //result.params[i] = st->getCanon(temp);
+      convertPARAM(parTok, &result.params[i], st);
     }
     i++;
   tmplEnd
-  return result;*/
+  return result;
 }
 
 /* Start with a copy of the base-type from the initial tokens, add anything in the
@@ -226,7 +217,7 @@ TypeAtom fake;
 Decl convertInitDtor(TypeAtom const &base, pANTLR3_BASE_TREE subTree, SymbolTable *st)
 {
 Decl result = Decl("",base);
-TypeAtom f;
+FuncType f;
 TokList ptrQualToks, dtorToks, children = extractChildren(subTree,0,-1);
 
   // Separate the (STAR typeQualifier?)* prefix from the declarator
@@ -261,14 +252,15 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
       if(numDeclPars==0)
         throw BrokenTree(subTree,"Function pointer with no parameters");
 
+      result.type.primitive = TypeAtom::Function;
+      result.type.stars = 1;
+      result.type.fidx = st->savePrototype(f);
       // TODO: (fwd) this is all finalisation code, build separately
       /*
       DataType copy = *st->getCanon(result); 
       copy.stars += countTokTypes(ptrQualToks,STAR);
       f.retType = st->getCanon(result);
       result.fptr = st->getCanon(f);
-      result.stars = 1;
-      result.primitive = DataType::Function;
       */
       break;
     }
@@ -371,8 +363,7 @@ bool prefix = true;
   tmplEnd
 }
 
-static string convertPARAM(pANTLR3_BASE_TREE node, TypeAtom *target,
-                           SymbolTable *st)
+static void convertPARAM(pANTLR3_BASE_TREE node, Decl *target, SymbolTable *st)
 {
 TokList children = extractChildren(node,0,-1);
 
@@ -381,14 +372,14 @@ list<pANTLR3_BASE_TREE> typeToks, others;
   findTypeTokens(children, typeToks, others);
 
 TypeAnnotation ann;
-TypeAtom base = convertDeclSpec(typeToks.begin(), typeToks.end(), ann, st); 
+TypeAtom baseT = convertDeclSpec(typeToks.begin(), typeToks.end(), ann, st); 
 TokList::iterator walk = others.begin();
-  target->stars = 0;
+  target->type.stars = 0;
   while(walk!=others.end())
   {
     ANTLR3_UINT32 nType = (*walk)->getType(*walk);
     if (nType==STAR)
-      target->stars++;
+      target->type.stars++;
     else if(nType==CONST)
       ;
     else 
@@ -422,13 +413,13 @@ TokList::iterator walk = others.begin();
     }
     if( idTok->getType(idTok) != IDENT )
       throw BrokenTree(node, "Non-IDENT following STARs in paramter");
-    *target = base;
-    return (char*)idTok->getText(idTok)->chars;
+    target->type = baseT;
+    target->name = (char*)idTok->getText(idTok)->chars;
   }
   else
   {
-    *target = base;     // Prototype with no name
-    return "";
+    target->type = baseT;     // Prototype with no name
+    target->name = "";
   }
 }
 

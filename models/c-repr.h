@@ -1,6 +1,7 @@
 #include <set>
 #include <map>
 #include <string>
+#include <vector>
 
 /*   A formal model of the C type-system can be found in:
      C formalised in HOL. Michael Norrish. UCAM-CL-TR-453 ISSN 1476-2986 
@@ -17,12 +18,13 @@ public:
   int  array;         // Number of dimensions
   std::string tag;    // Lookup for union/struct
 
+  unsigned int fidx;          // Index of function-type
   TypeAtom();
   bool operator <(TypeAtom const &rhs) const;
   bool operator==(TypeAtom const &rhs) const
   {
     return primitive==rhs.primitive && isUnsigned==rhs.isUnsigned && isConst==rhs.isConst
-        && stars==rhs.stars && array==rhs.array && tag==rhs.tag;
+        && stars==rhs.stars && array==rhs.array && tag==rhs.tag && fidx==rhs.fidx;
   }
   std::string str() const;
 };
@@ -44,23 +46,32 @@ public:
   }
 };
 
-/*class FuncType
+class Decl
 {
 public:
-  const DataType *retType;
+  std::string name;
+  TypeAtom type;
+  Decl(std::string s="", TypeAtom t=TypeAtom())
+    : name(s), type(t)
+  {
+  }
+};
+
+class FuncType
+{
+public:
+  TypeAtom retType;
   int nParams;
-  const DataType **params;
-  std::string    *paramNames;
+  Decl *params;
 
   FuncType()
-    : nParams(0), retType(NULL), params(NULL), paramNames(NULL)
+    : nParams(0), params(NULL)
   {
   }
 
   std::string str() const;
 
 };
-*/
 
 /* These are unique (defs of functions) but we make the same shallow-copying assumptions
    because the scope pointer is private and the type is owned by the parent scope.
@@ -95,16 +106,6 @@ ST   :: Typedefs -> Type ; Tags -> Type ; [Decl]
 eq :: (Primitive Stars Arrays) ==
     | RecordPrim same tree shape in Decl list.
 */
-class Decl
-{
-public:
-  std::string name;
-  TypeAtom type;
-  Decl(std::string s, TypeAtom t)
-    : name(s), type(t)
-  {
-  }
-};
 class SymbolTable
 {
 public:
@@ -112,6 +113,7 @@ public:
   std::map< std::string,TypeAtom > symbols;
   std::map< std::string,TypeAtom > typedefs;
   std::map< std::string,SymbolTable* > tags;       // Distinct names from typedefs
+  std::vector< FuncType > protos;
   //std::map< std::string,Function* > functions;  // Function definitions in this scope
   //std::map< std::string,FuncType* > funcRefs;   // Function types (ie pointers in this scope)
   /* As the above maps are defined over pointers we need a canonical address for a given type
@@ -124,6 +126,7 @@ public:
   void saveRecord(std::string, SymbolTable *);
   void saveType(std::string, TypeAtom &);
   void saveDecl(std::string, TypeAtom &);
+  unsigned int savePrototype(FuncType &);
   void dump(bool justRecord=false);
   /*
   const DataType *getCanon(DataType const &);     // Inserts if not present

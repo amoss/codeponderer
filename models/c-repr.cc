@@ -59,7 +59,7 @@ static DtComp dc;
 
 TypeAtom::TypeAtom()
   : isUnsigned(false), isConst(false), stars(0), primitive(TypeAtom::Empty), array(0),
-    tag("")
+    tag(""), fidx(0)
 {
 }
 
@@ -89,6 +89,7 @@ string TypeAtom::str() const
     parts.push_back("const");
   if(isUnsigned)
     parts.push_back("unsigned");
+  stringstream res;
   switch(primitive)
   {
     case TypeAtom::Empty:
@@ -130,13 +131,12 @@ string TypeAtom::str() const
       parts.push_back("enum");
       break;
     case TypeAtom::Function:
-      //parts.push_back(fptr->retType->str());
+      res << "func" << fidx;
       break;
     default:
       printf("Unknown prim %d\n",primitive);
       break;
   }
-  stringstream res;
   res << joinStrings(parts,' ');
   for(int i=0; i<stars; i++)
     res << "*" ;
@@ -159,22 +159,24 @@ bool TypeAtom::operator<(TypeAtom const &rhs) const
     return isConst < rhs.isConst;
   if(tag != rhs.tag)
     return tag < rhs.tag;
+  if(fidx != rhs.fidx)
+    return fidx < rhs.fidx;
   return false;
 }
 
-/*
+
 string FuncType::str() const
 {
 stringstream res;
-  res << retType->str();
+  res << retType.str();
   res << " <- ";
 list<string> pstrs;
   for(int i=0; i<nParams; i++)
-    pstrs.push_back(paramNames[i] + ":" + params[i]->str());
+    pstrs.push_back(params[i].name + ":" + params[i].type.str());
   res << joinStrings(pstrs,',');
   return res.str();
 }
-
+/*
 Function::Function(FuncType &outside, SymbolTable *where)
 {
   type = where->getCanon(outside);
@@ -243,6 +245,10 @@ map<string,SymbolTable* >::iterator recIt;
     recIt->second->dump(true);
     printf("}\n");
   }
+unsigned int idx=0;
+  tmplForeach(vector, FuncType, f, protos)
+    printf("func%u : %s\n", idx++, f.str().c_str());
+  tmplEnd
 /*
 map<string,Function *>::iterator fit;
   for(fit=functions.begin(); fit!=functions.end(); ++fit)
@@ -281,6 +287,13 @@ void SymbolTable::saveType(string name, TypeAtom &t)
 void SymbolTable::saveDecl(string name, TypeAtom &t)
 {
   symbols[name] = t;
+}
+
+unsigned int SymbolTable::savePrototype(FuncType &f)
+{
+unsigned int idx = protos.size();
+  protos.push_back(f);
+  return idx;
 }
 
 string SymbolTable::anonName()
