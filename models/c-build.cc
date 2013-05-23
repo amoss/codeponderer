@@ -63,6 +63,21 @@ pANTLR3_BASE_TREE findTok(TokList toks, int tokType)
 }
 
 
+/* When we encounter a declPar after an ident in an init-dtor it indicates that what
+   has been processed as a type so far is actually the return-type to a function.
+   This function takes a FuncType initialised to contain the parameters and embeds
+   the type as the function return type. The function type is registered in the
+   SymbolTable and the TypeAtom updated to link to it as either a prototype (stars=0)
+   or a function-pointer (stars=1).
+*/
+void swapReturn(FuncType f, TypeAtom *t, SymbolTable *st, int stars)
+{
+  f.retType = *t;
+  t->primitive = TypeAtom::Function;
+  t->stars = stars;
+  t->fidx = st->savePrototype(f);
+}
+
 // Called from processing a  ^(DECL declSpec initDecl+)
 //    declSpec contains storageClass, typeQualifier, typeSpecifier, IDENTs, INLINE keywords.
 //    TokList was the tokens upto the first initDecl (DECL).
@@ -252,11 +267,8 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
       if(numDeclPars==0)
         throw BrokenTree(subTree,"Function pointer with no parameters");
 
-      f.retType = result.type;
-      f.retType.stars += countTokTypes(ptrQualToks,STAR);
-      result.type.primitive = TypeAtom::Function;
-      result.type.stars = 1;
-      result.type.fidx = st->savePrototype(f);
+      result.type.stars += countTokTypes(ptrQualToks,STAR);
+      swapReturn(f, &result.type, st, 1);
       break;
     }
 
@@ -266,11 +278,8 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
       // Prototype declaration
       if(numDeclPars==1)
       {
-        f.retType = result.type;
-        f.retType.stars += countTokTypes(ptrQualToks,STAR);
-        result.type.primitive = TypeAtom::Function;
-        result.type.fidx = st->savePrototype(f);
-        result.type.stars = 0;
+        result.type.stars += countTokTypes(ptrQualToks,STAR);
+        swapReturn(f, &result.type, st, 0);
       }
       else
       {
@@ -385,25 +394,20 @@ TokList::iterator walk = others.begin();
     pANTLR3_BASE_TREE idTok = *walk;
     if( idTok->getType(idTok) == FPTR )
     {
-      // TODO: (fwd) all building/canonc code to finalisation
-      /*
       pANTLR3_BASE_TREE ps = findTok(others,DECLPAR) ;
       FuncType f;
       // Check if the function-pointer has no parameters (default cons above should be fine)
       if(ps!=NULL)
-        f = convertParams( ps, unresolved);
+        f = convertParams( ps, st);
       TokList fpChildren = extractChildren(idTok, 0, -1);
       if( fpChildren.size()<2 )
         throw BrokenTree(idTok, "FPTR without enough children");
       pANTLR3_BASE_TREE id2Tok = *(++fpChildren.begin());
       if( id2Tok->getType(id2Tok)!=IDENT )
         throw BrokenTree(idTok, "FPTR did not contain IDENT");
-      f.retType = st->getCanon(*target);
-      target->fptr = st->getCanon(f);
-      target->stars = 1;
-      target->primitive = DataType::Function;
-      return (char *)id2Tok->getText(id2Tok)->chars;
-      */
+      swapReturn(f, &target->type, st, 1);
+      target->name = (char *)id2Tok->getText(id2Tok)->chars;
+      return;
     }
     if( idTok->getType(idTok) != IDENT )
       throw BrokenTree(node, "Non-IDENT following STARs in paramter");
