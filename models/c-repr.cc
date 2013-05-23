@@ -162,28 +162,7 @@ bool TypeAtom::operator<(TypeAtom const &rhs) const
   return false;
 }
 
-/*string DataType::str() const
-{
-stringstream res;
-  res << ((TypeAtom)*this).str();
-  if(primitive==DataType::Function)
-  {
-    res << '(';
-    res << fptr->str();
-    res << ')';
-  }
-  if(nFields > 0)
-  {
-    res << '{';
-    for(int i=0; i<nFields; i++ )
-        res << fields[i]->str() << ";";
-    res << '}';
-  }
-  for(int i=0; i<array; i++)
-    res << "[]";
-  return res.str();
-}
-
+/*
 string FuncType::str() const
 {
 stringstream res;
@@ -202,19 +181,6 @@ Function::Function(FuncType &outside, SymbolTable *where)
   scope = new SymbolTable(where);
 }
 
-const DataType *SymbolTable::getCanon(DataType const &src)
-{
-  canon.insert(src);
-  set<DataType,DtComp>::iterator it = canon.find(src);
-  return &(*it);
-}
-
-FuncType *SymbolTable::getCanon(FuncType const &src)
-{
-  canonF.insert(src);
-  set<FuncType,FtComp>::iterator it = canonF.find(src);
-  return (FuncType*)&(*it);
-}
 
 const DataType *SymbolTable::lookupSymbol(string name) const
 {
@@ -223,16 +189,6 @@ map<string,const DataType*>::const_iterator it = symbols.find(name);
     return it->second;
   if(parent!=NULL)
     return parent->lookupSymbol(name);
-  return NULL;
-}
-
-const DataType *SymbolTable::lookupTypedef(string name) const
-{
-map<string,const DataType*>::const_iterator it = typedefs.find(name);
-  if(it!=typedefs.end())
-    return it->second;
-  if(parent!=NULL)
-    return parent->lookupTypedef(name);
   return NULL;
 }
 
@@ -290,12 +246,20 @@ map<string,Function *>::iterator fit;
 
 bool SymbolTable::validTypedef(string name)
 {
-  return typedefs.find(name)!=typedefs.end();
+  if( typedefs.find(name)!=typedefs.end() )
+    return true;
+  if( parent!=NULL)
+    return parent->validTypedef(name);
+  return false;
 }
 
 TypeAtom SymbolTable::getTypedef(string name) 
 {
-  return typedefs[name];
+  if( typedefs.find(name)!=typedefs.end() )
+    return typedefs[name];
+  if(parent!=NULL)
+    return parent->getTypedef(name);
+  return TypeAtom();
 }
 
 void SymbolTable::saveRecord(string name, SymbolTable *recTable)
