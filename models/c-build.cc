@@ -252,31 +252,25 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
       if(numDeclPars==0)
         throw BrokenTree(subTree,"Function pointer with no parameters");
 
+      f.retType = result.type;
+      f.retType.stars += countTokTypes(ptrQualToks,STAR);
       result.type.primitive = TypeAtom::Function;
       result.type.stars = 1;
       result.type.fidx = st->savePrototype(f);
-      // TODO: (fwd) this is all finalisation code, build separately
-      /*
-      DataType copy = *st->getCanon(result); 
-      copy.stars += countTokTypes(ptrQualToks,STAR);
-      f.retType = st->getCanon(result);
-      result.fptr = st->getCanon(f);
-      */
       break;
     }
 
     // Process: IDENT 
     case IDENT:
       result.name = (char*)idTok->getText(idTok)->chars;
+      // Prototype declaration
       if(numDeclPars==1)
       {
-        /* TODO: (fwd) canonisation is building move to finalisation
-        result.stars += countTokTypes(ptrQualToks,STAR);
-        f.retType = st->getCanon(result);
-        result.primitive = DataType::Function;  // star
-        result.fptr = st->getCanon(f);
-        result.stars = 0;
-        */
+        f.retType = result.type;
+        f.retType.stars += countTokTypes(ptrQualToks,STAR);
+        result.type.primitive = TypeAtom::Function;
+        result.type.fidx = st->savePrototype(f);
+        result.type.stars = 0;
       }
       else
       {

@@ -171,9 +171,14 @@ stringstream res;
   res << retType.str();
   res << " <- ";
 list<string> pstrs;
-  for(int i=0; i<nParams; i++)
-    pstrs.push_back(params[i].name + ":" + params[i].type.str());
-  res << joinStrings(pstrs,',');
+  if(nParams==0)
+    res << "void";
+  else 
+  {
+    for(int i=0; i<nParams; i++)
+      pstrs.push_back(params[i].name + ":" + params[i].type.str());
+    res << joinStrings(pstrs,',');
+  }
   return res.str();
 }
 /*
