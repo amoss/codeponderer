@@ -192,16 +192,20 @@ SymbolTable *recTable = NULL;
    declaration. Shallow-copy is valid on FuncType objects as they do not own
    any of the DataType objects pointed to - they are the canonical instances
    from a SymbolTable. */
-static FuncType convertParams(pANTLR3_BASE_TREE tok, SymbolTable *st)
+static FuncType convertParams(pANTLR3_BASE_TREE tok, SymbolTable *st, 
+                              TokList parCnts=TokList())
 {
 FuncType result;
   // Count the PARAM children and check there are no non-PARAM children so that the
   // number is valid as an array allocation.
-  TokList parCnts = extractChildren(tok, 0, -1);
-  tmplForeach(list, pANTLR3_BASE_TREE, parTok, parCnts)
-    if( parTok->getType(parTok) != PARAM && parTok->getType(parTok) != ELLIPSIS)
-      throw BrokenTree(tok,"Non-PARAM node inside a declTail parenthesized block");
-  tmplEnd
+  if(parCnts.size()==0 && tok!=NULL)
+  {
+    parCnts = extractChildren(tok, 0, -1);
+    tmplForeach(list, pANTLR3_BASE_TREE, parTok, parCnts)
+      if( parTok->getType(parTok) != PARAM && parTok->getType(parTok) != ELLIPSIS)
+        throw BrokenTree(tok,"Non-PARAM node inside a declTail parenthesized block");
+    tmplEnd
+  }
 
   // Allocate storage
   result.nParams = parCnts.size();
@@ -422,7 +426,7 @@ TokList::iterator walk = others.begin();
 }
 
 
-static Function *convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node)
+static void convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node)
 {
 pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
 char *identifier = (char*)idTok->getText(idTok)->chars;
@@ -437,37 +441,13 @@ TypeAnnotation ann;
 TypeAtom retType = convertDeclSpec(child, rest.end(), ann, where.table); 
 
 
-  // Once upon a time these parameters were parsed as declarations, back when the world was 
-  // young and the token stream was flat. But it because necessary to indicate dtor boundaries
-  // so that IDENTs could be resolved into symbol names and typedef'd names. Hence the 
-  // slightly ugly construction here.
-/*typedef pair<DataType,string> Binding;
-list<Binding> pBinding;
-  tmplForeach( list, pANTLR3_BASE_TREE, p, params)
-    PartialDataType temp;
-    string name = convertPARAM(p, &temp, unresolved);
-    pBinding.push_back( pair<PartialDataType,string>(temp,name) );
-  tmplEnd*/
+FuncType f = convertParams(NULL, where.table, params);
+  swapReturn(f, &retType, where.table, 0);
+  printf("FUNC %s\n", retType.str().c_str());
 
-  return new Function(where.table);
-  // Parse the parameters and build the FuncType
-/* TODO:
-      Cannot fix functions until after the type canonicalisation is finished
-FuncType f;
-  f.retType = where.table->getCanon(retType);
-  f.nParams = pBinding.size();
-  f.params     = new const DataType*[f.nParams];
-  f.paramNames = new string[f.nParams];
-  int idx=0;
-  tmplForeach(list, Binding, both, pBinding)
-    f.params[idx]     = where.table->getCanon(both.first);
-    f.paramNames[idx++] = both.second;
-  tmplEnd
-
-Function *def = new Function(f,where.table);
-  where.table->functions[identifier] = def;
-  return def;
-  */
+Function def = Function(where.table);
+  def.typeIdx = retType.fidx;
+  where.table->saveFunction(identifier, def);
 }
 
 
@@ -487,19 +467,13 @@ int count = node->getChildCount(node);
     case PREPRO: return;
     case SEMI:   return;
     case DECL:   
-    {
       convertDECL(node, tu.table);  // Updates table
       break;
-    }
     case FUNC:   
-    {
-      Function *f = convertFUNC(tu, node);
-      //funcDefs.push_back( NewRoot(node,f) );
+      convertFUNC(tu, node);        // Updates table
       break; 
-    }
     // Pure definition, build the type in the tag namespace
-    case UNION: 
-    case STRUCT:
+    case UNION:   case STRUCT:
       convertRecord(node, tu.table);  // Updates tag in SymbolTable
       break;
     default:

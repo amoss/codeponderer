@@ -81,7 +81,7 @@ class SymbolTable;
 class Function
 {
 public:
-  TypeAtom *ret;
+  unsigned int typeIdx;
   // Record for parameters
   SymbolTable *scope;
   Function(SymbolTable *where)
@@ -114,7 +114,7 @@ public:
   std::map< std::string,TypeAtom > typedefs;
   std::map< std::string,SymbolTable* > tags;       // Distinct names from typedefs
   std::vector< FuncType > protos;
-  //std::map< std::string,Function* > functions;  // Function definitions in this scope
+  std::map< std::string,Function > functions;  // Function definitions in this scope
   //std::map< std::string,FuncType* > funcRefs;   // Function types (ie pointers in this scope)
   /* As the above maps are defined over pointers we need a canonical address for a given type
      (no multiple copies even when types are aliased by multiple identifiers). The set container
@@ -127,6 +127,7 @@ public:
   void saveType(std::string, TypeAtom &);
   void saveDecl(std::string, TypeAtom &);
   unsigned int savePrototype(FuncType &);
+  void saveFunction(std::string, Function &);
   void dump(bool justRecord=false);
   /*
   const DataType *getCanon(DataType const &);     // Inserts if not present

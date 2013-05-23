@@ -6,36 +6,7 @@
 
 using namespace std;
 
-/*bool DtComp::operator() (DataType const &a, DataType const &b) const
-{
-static FtComp fc;
-  // Test both ways as only equality on base-fields should fall-through
-  if( static_cast<TypeAtom const&>(a) < static_cast<TypeAtom const&>(b) )
-    return true;
-  if( static_cast<TypeAtom const&>(b) < static_cast<TypeAtom const&>(a) )
-    return false;
-
-  if(a.primitive==DataType::Struct || a.primitive==DataType::Union)
-  {
-    if(a.nFields < b.nFields)
-      return true;
-    if(a.nFields > b.nFields)
-      return false;
-    for(int i=0; i<a.nFields; i++)
-    {
-      if( (*this)(*a.fields[i], *b.fields[i]) )  // DtComp is stateless so reuse object
-        return true;
-      if( (*this)(*b.fields[i], *a.fields[i]) )
-        return false;
-    }
-    return false;
-  }
-  if(a.primitive!=DataType::Function)
-    return false;
-  return fc(*a.fptr, *b.fptr);
-}
-
-bool FtComp::operator() (FuncType const &a, FuncType const &b) const
+/*bool FtComp::operator() (FuncType const &a, FuncType const &b) const
 {
 static DtComp dc;
 
@@ -131,7 +102,7 @@ string TypeAtom::str() const
       parts.push_back("enum");
       break;
     case TypeAtom::Function:
-      res << "func" << fidx;
+      res << "ftype" << fidx;
       break;
     default:
       printf("Unknown prim %d\n",primitive);
@@ -252,13 +223,11 @@ map<string,SymbolTable* >::iterator recIt;
   }
 unsigned int idx=0;
   tmplForeach(vector, FuncType, f, protos)
-    printf("func%u : %s\n", idx++, f.str().c_str());
+    printf("ftype%u : %s\n", idx++, f.str().c_str());
   tmplEnd
-/*
-map<string,Function *>::iterator fit;
-  for(fit=functions.begin(); fit!=functions.end(); ++fit)
-    printf("Function: %s -> %s\n", fit->first.c_str(), fit->second->type->str().c_str());
-    */
+map<string,Function>::iterator fIt;
+  for(fIt=functions.begin(); fIt!=functions.end(); ++fIt)
+    printf("Func %s: ftype%u\n", fIt->first.c_str(), fIt->second.typeIdx);
 }
 
 bool SymbolTable::validTypedef(string name)
@@ -299,6 +268,11 @@ unsigned int SymbolTable::savePrototype(FuncType &f)
 unsigned int idx = protos.size();
   protos.push_back(f);
   return idx;
+}
+
+void SymbolTable::saveFunction(string name, Function &f)
+{
+  functions.insert( pair<string,Function>(name,f) );
 }
 
 string SymbolTable::anonName()

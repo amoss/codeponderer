@@ -84,3 +84,33 @@ typedef struct
 {
     int x,y;
 } point;
+
+
+struct simple
+{
+  int a,b,c;
+};
+struct fwd;
+struct fwdSimple;
+struct A
+{
+  struct fwd *b;
+  struct fwdSimple *bb;
+};
+
+struct {
+  struct fwd *anon;
+} decl1, decl2;
+
+struct fwd    // Co-recursive
+{
+  struct A *a;
+};
+
+struct fwdSimple // No co-recursion
+{
+  char x;
+};
+
+struct A theA;
+struct fwd theB;
