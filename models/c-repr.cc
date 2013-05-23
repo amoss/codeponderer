@@ -212,7 +212,8 @@ set<TypeAtom> result;
   return result;
 }
 
-void transposeValues(const char *prefix, map<string,TypeAtom> const &src)
+void transposeValues(const char *prefix, map<string,TypeAtom> const &src, 
+                     bool multiline=true)
 {
 set<TypeAtom> u = uniqueValues(src);
   tmplForeachConst(set, TypeAtom, t, u)
@@ -221,20 +222,25 @@ set<TypeAtom> u = uniqueValues(src);
     for(it=src.begin(); it!=src.end(); ++it)
       if(it->second == t)
         printf(" %s", it->first.c_str());
-    printf("\n");
+    if(multiline)
+      printf("\n");
+    else
+      printf(" ");
   tmplEnd
 }
 
-void SymbolTable::dump()
+void SymbolTable::dump(bool justRecord)
 {
-  transposeValues("Decl", symbols);
+  transposeValues("Decl", symbols, !justRecord);
+  if(justRecord)
+    return;
   transposeValues("Type", typedefs);
 map<string,TypeAtom>::iterator it;
 map<string,SymbolTable* >::iterator recIt;    
   for(recIt=tags.begin(); recIt!=tags.end(); ++recIt)
   {
     printf("Tag: %s -> {", recIt->first.c_str());
-    recIt->second->dump();
+    recIt->second->dump(true);
     printf("}\n");
   }
 /*

@@ -124,7 +124,7 @@ public:
   void saveRecord(std::string, SymbolTable *);
   void saveType(std::string, TypeAtom &);
   void saveDecl(std::string, TypeAtom &);
-  void dump();
+  void dump(bool justRecord=false);
   /*
   const DataType *getCanon(DataType const &);     // Inserts if not present
   FuncType *getCanon(FuncType const &);           // Inserts if not present
