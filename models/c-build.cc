@@ -13,8 +13,9 @@ bool isTypeTok(pANTLR3_BASE_TREE tok)
   switch(tok->getType(tok)) 
   {
       case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID:
-      case UNSIGNED: case AUTO:   case TYPEDEF: case EXTERN: case STATIC:
+      case UNSIGNED: case SIGNED: case AUTO:   case TYPEDEF: case EXTERN: case STATIC:
       case VOLATILE: case CONST:    // Part of the basetype if before initdtors
+      case VALIST:
         return true;
       default:
         return false;
@@ -25,7 +26,7 @@ bool isPtrQual(pANTLR3_BASE_TREE tok)
 {
   switch(tok->getType(tok)) 
   {
-    case CONST: case VOLATILE:  case STAR:
+    case CONST: case UCONST: case URESTRICT: case VOLATILE:  case STAR:
       return true;
     default:
       return false;
@@ -107,14 +108,18 @@ TypeAtom result;
       case VOID:     result.primitive = TypeAtom::Void;   break;
 
       case UNSIGNED: result.isUnsigned = true;            break;
+      case SIGNED:   /* default value */                  break;
       case AUTO:     ann.isAuto = true;                   break;
       case EXTERN:   ann.isExtern = true;                 break;
       case STATIC:   ann.isStatic = true;                 break;
       case CONST:    result.isConst = true;               break;
+      case UCONST:   result.isConst = true;               break;
+      case URESTRICT:                                     break;
       case VOLATILE: ann.isVolatile = true;               break;
       case INLINE:   ann.isInline   = true;               break;
 
       case TYPEDEF:  ann.isTypedef = true;                break;  
+      case VALIST:  /* Todo: new primitive needed? */      break;
       case ELLIPSIS:                                      break;
 
       case IDENT:
@@ -292,6 +297,8 @@ int numDeclPars = countTokTypes(dtorToks, DECLPAR);
       break;
 
     default :
+      printf("idTok\n");
+      dumpTree(idTok,1);
       throw BrokenTree(subTree,"Malformed init-dtor - missing declName");
   }
   TokList::iterator it = dtorToks.begin();
@@ -347,12 +354,12 @@ bool prefix = true;
     {
       switch(tok->getType(tok))
       {
-        case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID: case STRUCT:
+        case CHAR: case DOUBLE: case FLOAT: case INT: case LONG: case VOID: case STRUCT: case UNION:
         case SHORT: case ENUM:
           idCount = 1;    // Pretend we saw the ident
           break;
         case UNSIGNED: case AUTO:   case TYPEDEF: case EXTERN: case STATIC:
-        case VOLATILE: case CONST:  
+        case VOLATILE: case CONST:  case UCONST:  case URESTRICT:
           break;        // Continue in prefix
         case IDENT:
           if( idCount++ > 0 )
@@ -403,13 +410,24 @@ TokList::iterator walk = others.begin();
       // Check if the function-pointer has no parameters (default cons above should be fine)
       if(ps!=NULL)
         f = convertParams( ps, st);
+      swapReturn(f, &target->type, st, 1);
       TokList fpChildren = extractChildren(idTok, 0, -1);
+      if( fpChildren.size()==1 )
+      {
+         pANTLR3_BASE_TREE s = *(fpChildren.begin());
+         if( s->getType(s) != STAR)
+           throw BrokenTree(idTok, "FPTR is all twisted and broken");
+         target->name = st->anonName();
+         return;
+      }
+      else 
       if( fpChildren.size()<2 )
+      {
         throw BrokenTree(idTok, "FPTR without enough children");
+      }
       pANTLR3_BASE_TREE id2Tok = *(++fpChildren.begin());
       if( id2Tok->getType(id2Tok)!=IDENT )
         throw BrokenTree(idTok, "FPTR did not contain IDENT");
-      swapReturn(f, &target->type, st, 1);
       target->name = (char *)id2Tok->getText(id2Tok)->chars;
       return;
     }
@@ -443,7 +461,6 @@ TypeAtom retType = convertDeclSpec(child, rest.end(), ann, where.table);
 
 FuncType f = convertParams(NULL, where.table, params);
   swapReturn(f, &retType, where.table, 0);
-  printf("FUNC %s\n", retType.str().c_str());
 
 Function def = Function(where.table);
   def.typeIdx = retType.fidx;

@@ -72,12 +72,10 @@ declSpec : storageClass   declSpec?
          | typeSpecifier+ declSpecPostType?
          | IDENT          declSpecPostType?
          | INLINE         declSpec?
-         | '__inline'     declSpec?
          ;
 declSpecPostType : storageClass  declSpecPostType?
                  | typeQualifier declSpecPostType?
                  | INLINE        declSpecPostType?
-                 | '__inline'    declSpecPostType?
                  ;
 
 // These three entities (variable declarations, function definition parameters and
@@ -174,20 +172,17 @@ typeSpecifier : VOID
               | DOUBLE
               | SIGNED
               | UNSIGNED
-              | unionSpecifier
               | structSpecifier
               | enumSpecifier
+              | VALIST
               ;
 
 typeQualifier : CONST
-              | '__const'
-              | '__restrict'
+              | UCONST
+              | URESTRICT
               | VOLATILE
               ;
 
-unionSpecifier : UNION IDENT? OPENBRA structDeclList CLOSEBRA
-               | UNION IDENT
-               ;
 unionDef  :   UNION  IDENT   OPENBRA structDeclList CLOSEBRA 
          -> ^(UNION  IDENT structDeclList ) ;
 structDef :   STRUCT IDENT   OPENBRA structDeclList CLOSEBRA
@@ -195,8 +190,12 @@ structDef :   STRUCT IDENT   OPENBRA structDeclList CLOSEBRA
 
 structSpecifier : STRUCT IDENT? OPENBRA structDeclList CLOSEBRA
                 -> ^(STRUCT IDENT structDeclList)
+                | UNION  IDENT? OPENBRA structDeclList CLOSEBRA
+                -> ^(UNION IDENT structDeclList)
                 | STRUCT IDENT
                 -> ^(STRUCT IDENT)
+                | UNION  IDENT
+                -> ^(UNION IDENT)
                 ;
 
 structDeclList : (declaration SEMI | PREPRO)+
@@ -294,12 +293,16 @@ STATIC   : 'static';
 AUTO     : 'auto';
 REGISTER : 'register';
 CONST    : 'const';
+UCONST    : '__const';
+URESTRICT : '__restrict';
 VOLATILE : 'volatile';
-INLINE   : 'inline';
+INLINE   : 'inline' | '__inline';
 
 STRUCT   : 'struct';
 UNION    : 'union';
 ENUM     : 'enum';
+
+VALIST   : '__builtin_va_list';
 
 IF     : 'if';
 ELSE   : 'else';
