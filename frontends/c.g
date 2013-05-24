@@ -98,7 +98,7 @@ protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
           -> ^(PARAM declSpec STAR* fptrName ^(DECLPAR declPar) ) 
           | declSpec STAR* fptrName OPENPAR CLOSEPAR
           -> ^(PARAM declSpec STAR* fptrName )
-          |               declSpec STAR* typeQualifier? IDENT? (OPENSQ notsq* CLOSESQ)?
+          |               declSpec (STAR typeQualifier?)* IDENT? (OPENSQ notsq* CLOSESQ)?
           -> ^(PARAM declSpec STAR* IDENT?)
           | ELLIPSIS
           ;
@@ -110,8 +110,8 @@ protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
 // This is still far less messy than trying to resolve IDENTs/types during the parse...
 declarator  : (STAR typeQualifier?)* (fptrName|IDENT) declTail*;
 
-fptrName    : OPENPAR STAR IDENT (OPENPAR declPar CLOSEPAR)? CLOSEPAR
-            -> ^(FPTR STAR IDENT declPar?)
+fptrName    : OPENPAR STAR IDENT? (OPENPAR declPar CLOSEPAR)? CLOSEPAR
+            -> ^(FPTR STAR IDENT? declPar?)
             ;
 notsq : ~CLOSESQ;
 declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for simplicity

@@ -160,7 +160,7 @@ TypeAtom res;
   // If there is an IDENT? then process it separately from the DECL loop
 TokList cs = extractChildren(node,0,-1);
 pANTLR3_BASE_TREE first = *cs.begin();
-  if(first->getType(first) == IDENT)
+  if(cs.size()>0 && first->getType(first) == IDENT)
   {
     cs.pop_front();
     res.tag = (char*)first->getText(first)->chars;
