@@ -76,3 +76,9 @@ void partitionList(std::list<T> src, std::list<T> &yes, std::list<T> &no, bool (
   for(;elIt!=src.end(); ++elIt)
       no.push_back(*elIt);
 }
+
+std::list<std::string> splitPath(std::string const &path);
+std::pair<std::string, std::string> splitExt(std::string const &filename);
+
+
+

@@ -17,9 +17,11 @@ endif
 
 CFLAGS=-g -I. -Igenerated -Iantlr-3.1.3/runtime/C/include -Iantlr-3.1.3/runtime/C
 
-demos: demos/trivial
-demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o models  $(RUNLIB)
-	${GPP} -g demos/trivial.cc generated/cInCLexer.o generated/cInCParser.o $(MODOBJS) -I. -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
+demos: demos/trivial demos/buildConfig
+demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o models misc  $(RUNLIB)
+	${GPP} -g demos/trivial.cc generated/cInCLexer.o generated/cInCParser.o $(MODOBJS) $(MISCOBJS) -I. -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
+demos/buildConfig: demos/buildConfig.cc generated/cInCParser.o generated/cInCLexer.o models misc  $(RUNLIB)
+	${GPP} -g demos/buildConfig.cc generated/cInCLexer.o generated/cInCParser.o $(MODOBJS) $(MISCOBJS) -I. -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
 
 
 frontends: generated/cInCParser.c generated/cInPyParser.py
@@ -37,14 +39,20 @@ generated/cInCLexer.o: generated/cInCLexer.c $(RUNLIB)
 generated/cInCParser.o: generated/cInCParser.c $(RUNLIB)
 	${GCC} -c generated/cInCParser.c ${CFLAGS} -o generated/cInCParser.o
 
-MODOBJS=generated/c-repr.o generated/c-build.o generated/util.o 
+
+MISCOBJS=generated/util.o generated/path.o
+misc: $(MISCOBJS)
+generated/path.o: misc/path.h misc/path.cc
+	${GPP} -c misc/path.cc ${CFLAGS} -o generated/path.o
+generated/util.o: misc/util.h misc/util.cc
+	${GPP} -c misc/util.cc ${CFLAGS} -o generated/util.o
+
+MODOBJS=generated/c-repr.o generated/c-build.o
 models: $(MODOBJS)
-generated/c-repr.o: models/c-repr.cc models/c-repr.h
+generated/c-repr.o: models/c-repr.cc models/c-repr.h misc/util.h
 	${GPP} -c models/c-repr.cc ${CFLAGS} -o generated/c-repr.o
-generated/c-build.o: models/c-build.cc models/c-build.h generated/c-repr.o models/graph.h models/graph.cc
+generated/c-build.o: models/c-build.cc models/c-build.h generated/c-repr.o models/graph.h models/graph.cc misc/util.h
 	${GPP} -c models/c-build.cc ${CFLAGS} -o generated/c-build.o
-generated/util.o: models/util.h models/util.cc
-	${GPP} -c models/util.cc ${CFLAGS} -o generated/util.o
 
 
 antlr-3.1.3/lib/antlr-3.1.3.jar:

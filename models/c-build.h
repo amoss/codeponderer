@@ -1,6 +1,6 @@
 #include <list>
 #include <exception>
-#include "models/util.h"
+#include "misc/util.h"
 #include "models/c-repr.h"
 #include "models/graph.h"
 

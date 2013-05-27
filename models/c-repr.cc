@@ -1,7 +1,7 @@
 #include<list>
 #include<sstream>
 #include "models/c-repr.h"
-#include "models/util.h"
+#include "misc/util.h"
 #include<stdio.h>
 
 using namespace std;
@@ -282,7 +282,8 @@ stringstream res;
   return res.str();
 }
 
-TranslationU::TranslationU()
+TranslationU::TranslationU(string name)
+  : path(name)
 {
   table = new SymbolTable;
 }

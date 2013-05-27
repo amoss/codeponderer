@@ -1,4 +1,4 @@
-#include "models/util.h"
+#include "misc/util.h"
 using namespace std;
 
 extern pANTLR3_UINT8   cInCParserTokenNames[];
@@ -76,3 +76,26 @@ void printTokList(TokList ls)
 }
 
 
+list<string> splitPath(string const &path)
+{
+list<string> components;
+size_t pos = 0;
+  while( pos!=string::npos )
+  {
+    size_t next = path.find('/',pos+1);
+    if( next!=string::npos )
+      components.push_back(path.substr(pos+1,next-pos));  // drops slashes from length
+    else
+      components.push_back(path.substr(pos+1));
+    pos = next;
+  }
+  return components;
+}
+
+pair<string, string> splitExt(string const &filename)
+{
+size_t lastDot = filename.rfind('.');
+  if(lastDot==string::npos)
+    return pair<string,string>(filename,"");
+  return pair<string,string>(filename.substr(0,lastDot), filename.substr(lastDot+1));
+}

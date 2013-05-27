@@ -481,7 +481,24 @@ int type  = node->getType(node);
 int count = node->getChildCount(node);
   switch(type)
   {
-    case PREPRO: return;
+    case PREPRO: 
+    {
+      string s = (char*)node->getText(node)->chars;
+      if( s.find("#line") != string::npos)
+      {
+        size_t pathStart = s.find('"');
+        size_t pathStop  = s.find('"', pathStart+1);
+        string path = s.substr(pathStart+1, pathStop-pathStart-1);
+        list<string> pathComps = splitPath(path);
+        pair<string,string> fnameComps = splitExt(pathComps.back());
+        if( path==tu.path )
+          printf("Pre-tu: %s\n", path.c_str());
+        else
+          printf("Pre-headers: %s -> %s %s\n", path.c_str(), fnameComps.first.c_str(),
+                 fnameComps.second.c_str());
+      }
+      return;
+    }
     case SEMI:   return;
     case DECL:   
       convertDECL(node, tu.table);  // Updates table
@@ -578,7 +595,7 @@ cInCParser_translationUnit_return firstPass;
 
 /* Pass II: semantic analysis on the partial parsetree */
 list<NewRoot> funcDefs;
-TranslationU result;
+TranslationU result = TranslationU(filename);
   /* Translation units with a single top-level declaration do not have a NIL node as parent. It only
      exists when the AST is a forest to act as a virtual root. */
   try {

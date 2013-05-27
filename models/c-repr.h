@@ -148,8 +148,9 @@ class TranslationU
 {
 public:
   SymbolTable *table;
+  std::string path;
 
-  TranslationU();
+  TranslationU(std::string);
   void dump();
   void buildSymbolTable();
 };
