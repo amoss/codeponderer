@@ -469,6 +469,23 @@ Function def = Function(where);
 
 
 
+/* Synthetic nodes resulting from tree construction in the parse do not have the annotated
+   state from the last preprocessor line, walk their subtree until an annotation is found.
+*/
+static pANTLR3_UINT8 findCustom( pANTLR3_BASE_TREE node )
+{
+pANTLR3_COMMON_TOKEN tok = node->getToken(node);
+  if(tok->custom != NULL)
+    return (pANTLR3_UINT8)tok->custom;
+int count = node->getChildCount(node);
+  for(int i=0; i<count; i++)
+  {
+    pANTLR3_UINT8 sub = findCustom((pANTLR3_BASE_TREE)node->getChild(node,i));
+    if( sub!=NULL )
+      return sub;
+  }
+  return NULL;
+}
 
 // Partial Declarations:   PartialDataType name   <- anon go in here
 // Partial Records:        PartialDataType tagname
@@ -479,23 +496,23 @@ static void processTopLevel(pANTLR3_BASE_TREE node, TranslationU &tu,
 {
 int type  = node->getType(node);
 int count = node->getChildCount(node);
+pANTLR3_UINT8 lastPP = findCustom(node);
+  if(lastPP!=NULL)
+  {
+    string s = (char*)lastPP;
+    if( s.find("#line") != string::npos)
+    {
+      size_t pathStart = s.find('"');
+      size_t pathStop  = s.find('"', pathStart+1);
+      string path = s.substr(pathStart+1, pathStop-pathStart-1);
+      list<string> pathComps = splitPath(path);
+      pair<string,string> fnameComps = splitExt(pathComps.back());
+      if( tu.headers!=NULL)
+        *curST = tu.headers(&tu, path);
+    }
+  }
   switch(type)
   {
-    case PREPRO: 
-    {
-      string s = (char*)node->getText(node)->chars;
-      if( s.find("#line") != string::npos)
-      {
-        size_t pathStart = s.find('"');
-        size_t pathStop  = s.find('"', pathStart+1);
-        string path = s.substr(pathStart+1, pathStop-pathStart-1);
-        list<string> pathComps = splitPath(path);
-        pair<string,string> fnameComps = splitExt(pathComps.back());
-        if( tu.headers!=NULL)
-          *curST = tu.headers(&tu, path);
-      }
-      return;
-    }
     case SEMI:   return;
     case DECL:   
       convertDECL(node, *curST);  // Updates table
@@ -587,6 +604,17 @@ cInCParser_translationUnit_return firstPass;
   // Todo: error checking for IO errors !
   lex       = cInCLexerNew(ip);
   tokens    = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lex));
+  pANTLR3_VECTOR vec = tokens->getTokens(tokens);
+  pANTLR3_UINT8 lastPP;
+  for(int i=0; i<vec->elementsSize; i++)
+  {
+    pANTLR3_COMMON_TOKEN t = (pANTLR3_COMMON_TOKEN) vec->get(vec,i);
+    if(t==NULL)
+      continue;
+    if(t->getType(t)==PREPRO)
+      lastPP = t->getText(t)->chars;
+    t->custom = lastPP;
+  }
   parser    = cInCParserNew(tokens);
   firstPass = parser->translationUnit(parser);
 

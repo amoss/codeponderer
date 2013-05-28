@@ -36,19 +36,17 @@ tokens {
   STATEMENT;
 }
 
-
 translationUnit : externDecl+
                 ;
 
-externDecl : functionDef
-           | declaration SEMI
+externDecl : functionDef           
+           | declaration SEMI     
            | unionDef SEMI    // Pure definition (must include tag-name)
            | structDef SEMI   // Pure definition (must include tag-name)
-           | STRUCT IDENT SEMI // Forward reference
+           | STRUCT {$STRUCT->user1=NULL;} IDENT SEMI // Forward reference
            //-> ^(DECL ^(STRUCT IDENT))
            -> ^(STRUCT IDENT)
            | enumSpecifier SEMI     // Pure definition (defines values)
-           | PREPRO
            ;
 
 // (optionally) Initialised declarators
@@ -85,7 +83,7 @@ declSpecPostType : storageClass  declSpecPostType?
 // later. Here the init-decl-list must contain at least one item (even if just an IDENT)
 // with a special case for struct definitions.
 declaration : declSpec initDecl (COMMA initDecl)*
-            -> ^(DECL declSpec initDecl+)
+            -> ^(DECL declSpec initDecl+) 
             | structSpecifier initDecl (COMMA initDecl)*
             -> ^(DECL structSpecifier initDecl+)
             | enumSpecifier
@@ -326,7 +324,7 @@ fragment ESC : '\\' ('a' | 'b' | 'v' | 'f' | 'r' | 't' | 'n' | '\'' | '\\' | DIG
 
 // Preprocess commands will be awkward because of the interaction with whitespace
 PREPRO: '#'  (' '|'\t')* ('include' | 'define' | 'undef' | 'if' | 'endif' | 'else' | 'elif' | 'error' 
-              | 'pragma' | 'line') (~'\n')* '\n' ;
+              | 'pragma' | 'line') (~'\n')* '\n' REPLACEHIDDEN;
 //HASHINCLUDE: '#' (' '|'\t')* 'include' (~'\n')* '\n' ;
 //HASHDEFINE: '#' (' '|'\t')* 'define' (~'\n')* '\n' ;
 //HASHUNDEF: '#' (' '|'\t')* 'undef' (~'\n')* '\n' ;
