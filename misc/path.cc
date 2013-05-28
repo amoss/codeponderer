@@ -1,3 +1,4 @@
+#include<sstream>
 #include "misc/path.h"
 
 using namespace std;
@@ -6,14 +7,19 @@ static list<string> splitPath(string const &path)
 {
 list<string> components;
 size_t pos = 0;
-  while( pos!=string::npos )
+  while( true )
   {
-    size_t next = path.find('/',pos+1);
+    size_t next = path.find('/',pos);
     if( next!=string::npos )
-      components.push_back(path.substr(pos+1,next-pos));  // drops slashes from length
+    {
+      components.push_back(path.substr(pos,next-pos));  // drops slashes from length
+      pos = next+1;
+    }
     else
-      components.push_back(path.substr(pos+1));
-    pos = next;
+    {
+      components.push_back(path.substr(pos));
+      break;
+    }
   }
   return components;
 }
@@ -64,4 +70,20 @@ bool Path::inside(const Path &above) const
     if(*c1 != *c2)
       return false;
   return true;
+}
+
+string Path::repr() const
+{
+stringstream result;
+  if(!relative)
+    result << "/";
+  for(int i=0; i<ups; i++)
+    result << "../";
+  for( list<string>::const_iterator c=components.begin(); c!=components.end();)
+  {
+    result << *c;
+    if( ++c != components.end() )
+      result << '/';
+  }
+  return result.str();
 }

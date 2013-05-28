@@ -4,7 +4,7 @@
 #include "models/c-repr.h"
 #include "models/graph.h"
 
-TranslationU parseUnit(char *filename);
+TranslationU parseUnit(SymbolTable *parent, char *filename, TranslationU::PathClassifier = NULL);
 
 class BrokenTree : public std::exception
 {

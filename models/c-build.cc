@@ -444,7 +444,7 @@ TokList::iterator walk = others.begin();
 }
 
 
-static void convertFUNC(TranslationU &where, pANTLR3_BASE_TREE node)
+static void convertFUNC(SymbolTable *where, pANTLR3_BASE_TREE node)
 {
 pANTLR3_BASE_TREE idTok = (pANTLR3_BASE_TREE)node->getChild(node,0);
 char *identifier = (char*)idTok->getText(idTok)->chars;
@@ -456,15 +456,15 @@ TokList rest = extractChildren(node,2,-1);
 TokList::iterator child = rest.begin();
   takeWhile( child, rest.end(), params, isParam);
 TypeAnnotation ann;
-TypeAtom retType = convertDeclSpec(child, rest.end(), ann, where.table); 
+TypeAtom retType = convertDeclSpec(child, rest.end(), ann, where); 
 
 
-FuncType f = convertParams(NULL, where.table, params);
-  swapReturn(f, &retType, where.table, 0);
+FuncType f = convertParams(NULL, where, params);
+  swapReturn(f, &retType, where, 0);
 
-Function def = Function(where.table);
+Function def = Function(where);
   def.typeIdx = retType.fidx;
-  where.table->saveFunction(identifier, def);
+  where->saveFunction(identifier, def);
 }
 
 
@@ -475,7 +475,7 @@ Function def = Function(where.table);
 
 typedef pair<pANTLR3_BASE_TREE,Function*> NewRoot;    // Leftovers for second parse
 static void processTopLevel(pANTLR3_BASE_TREE node, TranslationU &tu, 
-                            list<NewRoot> &funcDefs)
+                            list<NewRoot> &funcDefs, SymbolTable **curST)
 {
 int type  = node->getType(node);
 int count = node->getChildCount(node);
@@ -491,24 +491,21 @@ int count = node->getChildCount(node);
         string path = s.substr(pathStart+1, pathStop-pathStart-1);
         list<string> pathComps = splitPath(path);
         pair<string,string> fnameComps = splitExt(pathComps.back());
-        if( path==tu.path )
-          printf("Pre-tu: %s\n", path.c_str());
-        else
-          printf("Pre-headers: %s -> %s %s\n", path.c_str(), fnameComps.first.c_str(),
-                 fnameComps.second.c_str());
+        if( tu.headers!=NULL)
+          *curST = tu.headers(&tu, path);
       }
       return;
     }
     case SEMI:   return;
     case DECL:   
-      convertDECL(node, tu.table);  // Updates table
+      convertDECL(node, *curST);  // Updates table
       break;
     case FUNC:   
-      convertFUNC(tu, node);        // Updates table
+      convertFUNC(*curST, node);        // Updates table
       break; 
     // Pure definition, build the type in the tag namespace
     case UNION:   case STRUCT:
-      convertRecord(node, tu.table);  // Updates tag in SymbolTable
+      convertRecord(node, *curST);  // Updates tag in SymbolTable
       break;
     default:
       printf("Unknown Type %u Children %u ", type, count);
@@ -576,7 +573,7 @@ cInCParser_declaration_return retVal2 = parser->declaration(parser);
   return stmt;
 }
 
-TranslationU parseUnit(char *filename)
+TranslationU parseUnit(SymbolTable *parent, char *filename, TranslationU::PathClassifier c)
 {
 pANTLR3_INPUT_STREAM ip;
 pANTLR3_COMMON_TOKEN_STREAM tokens;
@@ -595,7 +592,8 @@ cInCParser_translationUnit_return firstPass;
 
 /* Pass II: semantic analysis on the partial parsetree */
 list<NewRoot> funcDefs;
-TranslationU result = TranslationU(filename);
+TranslationU result = TranslationU(parent, filename,c);
+SymbolTable *curST = result.table;
   /* Translation units with a single top-level declaration do not have a NIL node as parent. It only
      exists when the AST is a forest to act as a virtual root. */
   try {
@@ -605,7 +603,7 @@ TranslationU result = TranslationU(filename);
       {
         try {
         processTopLevel((pANTLR3_BASE_TREE)firstPass.tree->getChild(firstPass.tree,i), 
-                        result, funcDefs);
+                        result, funcDefs, &curST);
         }
         catch(BrokenTree bt) {
           printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
@@ -614,7 +612,7 @@ TranslationU result = TranslationU(filename);
       }
     }
     else
-      processTopLevel(firstPass.tree, result, funcDefs);
+      processTopLevel(firstPass.tree, result, funcDefs, &curST);
     //unresolved.finalise(result.table);
   }
   catch(BrokenTree bt) {

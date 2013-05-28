@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "misc/path.h"
+
 /*   A formal model of the C type-system can be found in:
      C formalised in HOL. Michael Norrish. UCAM-CL-TR-453 ISSN 1476-2986 
 */
@@ -147,10 +149,11 @@ public:
 class TranslationU
 {
 public:
+typedef SymbolTable *(*PathClassifier)(TranslationU *,Path const &);
   SymbolTable *table;
   std::string path;
 
-  TranslationU(std::string);
+  PathClassifier headers;
+  TranslationU(SymbolTable *, std::string, PathClassifier=NULL);
   void dump();
-  void buildSymbolTable();
 };

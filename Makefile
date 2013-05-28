@@ -21,7 +21,7 @@ demos: demos/trivial demos/buildConfig
 demos/trivial: demos/trivial.cc generated/cInCParser.o generated/cInCLexer.o models misc  $(RUNLIB)
 	${GPP} -g demos/trivial.cc generated/cInCLexer.o generated/cInCParser.o $(MODOBJS) $(MISCOBJS) -I. -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
 demos/buildConfig: demos/buildConfig.cc generated/cInCParser.o generated/cInCLexer.o models misc  $(RUNLIB)
-	${GPP} -g demos/buildConfig.cc generated/cInCLexer.o generated/cInCParser.o $(MODOBJS) $(MISCOBJS) -I. -Igenerated ${CINCS} -o demos/trivial ${CLIBS}
+	${GPP} -g demos/buildConfig.cc generated/cInCLexer.o generated/cInCParser.o $(MODOBJS) $(MISCOBJS) -I. -Igenerated ${CINCS} -o demos/buildConfig ${CLIBS}
 
 
 frontends: generated/cInCParser.c generated/cInPyParser.py

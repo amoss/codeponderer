@@ -16,7 +16,7 @@ int getChildType(pANTLR3_BASE_TREE parent, int idx)
 int main(int argc, char **argv)
 {
 
-TranslationU model = parseUnit(argv[1]);
+TranslationU model = parseUnit(NULL, argv[1]);
   model.table->dump();
   
 }
