@@ -33,14 +33,14 @@ static Path prjRoot = Path("../gawk-4.0.2");
 
 pair<string,char *> ppMap[] =
 {
-  pair<string,char *>("../gawk-4.0.2/array.c", "testcases/pp-gawk/array.i"),
-  pair<string,char *>("../gawk-4.0.2/builtin.c", "testcases/pp-gawk/builtin.i"),
-  pair<string,char *>("../gawk-4.0.2/command.c", "testcases/pp-gawk/command.i"),
-  pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/debug.i"),
-  pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/dfa.i"),
-  pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/eval.i"),
-  pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/eval_d.i"),
-  pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/eval_p.i"),
+  //pair<string,char *>("../gawk-4.0.2/array.c", "testcases/pp-gawk/array.i"),
+  //pair<string,char *>("../gawk-4.0.2/builtin.c", "testcases/pp-gawk/builtin.i"),
+  //pair<string,char *>("../gawk-4.0.2/command.c", "testcases/pp-gawk/command.i"),
+  //pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/debug.i"),
+  //pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/dfa.i"),
+  //pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/eval.i"),
+  //pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/eval_d.i"),
+  //pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/eval_p.i"),
   pair<string,char *>("../gawk-4.0.2/awkgram.c", "testcases/pp-gawk/ext.i")
 };
 

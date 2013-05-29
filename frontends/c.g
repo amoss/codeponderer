@@ -50,8 +50,9 @@ externDecl : functionDef
            ;
 
 // (optionally) Initialised declarators
-initDecl : declarator initialiser? 
+initDecl : declarator initialiser? (COLON NUM)?
          -> ^(DECL declarator initialiser?)
+         | COLON NUM      // Padding in structs with bitfields
          ;
 
 /* A typename / identifier ambiguity.
@@ -104,9 +105,11 @@ protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
 // The standard splits this element into two-levels, not sure why... they are
 // left-recursive so follow Parr's transformation onto repeating suffixes
 // This is still far less messy than trying to resolve IDENTs/types during the parse...
-declarator  : (STAR typeQualifier?)* (fptrName|IDENT) declTail*;
+declarator  : (STAR typeQualifier?)* (fptrName|IDENT) declTail* asmBlock? (COLON NUM)?;
 
 fptrName    : OPENPAR STAR IDENT? (OPENPAR declPar CLOSEPAR)? CLOSEPAR
+            -> ^(FPTR STAR IDENT? declPar?)
+            | OPENPAR OPBINXOR IDENT? (OPENPAR declPar CLOSEPAR)? CLOSEPAR // Apple Blocks extension
             -> ^(FPTR STAR IDENT? declPar?)
             ;
 notsq : ~CLOSESQ;
@@ -226,6 +229,7 @@ compoundStmt : OPENBRA notscope* (compoundStmt notscope*)* CLOSEBRA
 
 notExpr : ~(OPENPAR|CLOSEPAR);
 expr : OPENPAR notExpr* (expr notExpr*)* CLOSEPAR ;
+asmBlock : ASM expr;
 
 goop: ~(OPENBRA|CLOSEBRA|SEMI);
 statement : OPENBRA statement* CLOSEBRA
@@ -265,7 +269,7 @@ fragment GNUbra: (~('('|')') )* ( '(' GNUbra ')' )?;
 GNUEXPR: '({' (options {greedy=false;}:.)* '})' REPLACEHIDDEN ;
 GNUext : '__extension__' REPLACEHIDDEN ;
 
-ASM: '__asm__' WS* '(' STR ')' REPLACEHIDDEN;
+ASM: '__asm__' | '__asm';
 
 OPENPAR  : '(' ;
 CLOSEPAR : ')' ;
@@ -294,7 +298,7 @@ CONST    : 'const';
 UCONST    : '__const';
 URESTRICT : '__restrict';
 VOLATILE : 'volatile';
-INLINE   : 'inline' | '__inline';
+INLINE   : 'inline' | '__inline__' | '__inline' ;
 
 STRUCT   : 'struct';
 UNION    : 'union';
