@@ -98,10 +98,14 @@ TypeAtom result;
       case STAR:
         result.stars++;
         break;
+      case COLON:
+        printf("colon\n");
+        return result;      // Structure padding
 
       case DOUBLE:   result.primitive = TypeAtom::Double; break;
       case FLOAT:    result.primitive = TypeAtom::Float;  break;
       case CHAR:     result.primitive = TypeAtom::Char;   break;
+      case BOOL:     result.primitive = TypeAtom::Bool;   break;
       case SHORT:    result.primitive = TypeAtom::Short;  break;
       case LONG:     result.primitive = TypeAtom::Long;   break;
       case INT:      result.primitive = TypeAtom::Int;    break;
@@ -243,6 +247,10 @@ Decl convertInitDtor(TypeAtom const &base, pANTLR3_BASE_TREE subTree, SymbolTabl
 Decl result = Decl("",base);
 FuncType f;
 TokList ptrQualToks, dtorToks, children = extractChildren(subTree,0,-1);
+
+  // Sructure padding
+  if( subTree->getType(subTree) == COLON )
+    return result;
 
   // Separate the (STAR typeQualifier?)* prefix from the declarator
   partitionList(children, ptrQualToks, dtorToks, isPtrQual);
@@ -636,6 +644,8 @@ SymbolTable *curST = result.table;
         catch(BrokenTree bt) {
           printf("ERROR(%u): %s\n", bt.blame->getLine(bt.blame), bt.explain);
           dumpTree(bt.blame,1);
+          printf("Within:");
+          dumpTree((pANTLR3_BASE_TREE)firstPass.tree->getChild(firstPass.tree,i),1);
         }
       }
     }

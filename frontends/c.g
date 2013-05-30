@@ -50,9 +50,13 @@ externDecl : functionDef
            ;
 
 // (optionally) Initialised declarators
-initDecl : declarator initialiser? (COLON NUM)?
+initDecl : declarator initialiser? bitfield?
          -> ^(DECL declarator initialiser?)
-         | COLON NUM      // Padding in structs with bitfields
+         | bitfield      // Padding in structs with bitfields
+         ;
+
+bitfield : COLON NUM
+         -> ^(COLON NUM)
          ;
 
 /* A typename / identifier ambiguity.
@@ -89,7 +93,7 @@ declaration : declSpec initDecl (COMMA initDecl)*
             -> ^(DECL structSpecifier initDecl+)
             | enumSpecifier
             -> ^(DECL enumSpecifier)      // TODO: Must be wrong, needs initDecl+ ??
-            | declSpec COLON NUM    
+            | declSpec bitfield
             ;
 protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
           -> ^(PARAM declSpec STAR* fptrName ^(DECLPAR declPar) ) 
@@ -105,7 +109,7 @@ protoDecl : declSpec STAR* fptrName OPENPAR declPar CLOSEPAR
 // The standard splits this element into two-levels, not sure why... they are
 // left-recursive so follow Parr's transformation onto repeating suffixes
 // This is still far less messy than trying to resolve IDENTs/types during the parse...
-declarator  : (STAR typeQualifier?)* (fptrName|IDENT) declTail* asmBlock? (COLON NUM)?;
+declarator  : (STAR typeQualifier?)* (fptrName|IDENT) declTail* asmBlock?;
 
 fptrName    : OPENPAR STAR IDENT? (OPENPAR declPar CLOSEPAR)? CLOSEPAR
             -> ^(FPTR STAR IDENT? declPar?)
@@ -118,7 +122,7 @@ declTail    : OPENPAR declPar? CLOSEPAR                      // Fold cases for s
             //| OPENSQ constExpr? CLOSESQ        // Arrays
             | OPENSQ notsq* CLOSESQ        // Arrays
             -> ^(OPENSQ notsq* CLOSESQ)
-            | COLON NUM   // Only valid inside bitfields, not generally
+            | bitfield
             ;
 declPar     : protoDecl (COMMA protoDecl)* // Prototypes with optional idents
             -> protoDecl+
@@ -165,6 +169,7 @@ storageClass : TYPEDEF      // Not a variable then.
              ;
 
 typeSpecifier : VOID
+              | BOOL
               | CHAR
               | SHORT
               | INT
@@ -235,12 +240,16 @@ goop: ~(OPENBRA|CLOSEBRA|SEMI);
 statement : OPENBRA statement* CLOSEBRA
           | IF expr statement (ELSE statement)?
           -> ^(IF expr statement statement?)
+          | DO statement WHILE expr SEMI
+          -> ^(DO statement expr)
           | WHILE expr statement
           -> ^(WHILE expr statement)
           | FOR expr statement
           -> ^(FOR expr statement)
           | SWITCH expr compoundStmt
           -> ^(SWITCH expr compoundStmt)
+          | declaration SEMI
+          -> declaration
           | goop+ SEMI
           -> ^(STATEMENT goop+)
           | PREPRO
@@ -281,6 +290,7 @@ OPENCOM  : '/*' ;
 CLOSECOM : '*/' ;
 
 VOID     : 'void' ;
+BOOL     : '_Bool' ;
 CHAR     : 'char' ;
 SHORT    : 'short' ;
 INT      : 'int' ;
@@ -306,6 +316,7 @@ ENUM     : 'enum';
 
 VALIST   : '__builtin_va_list';
 
+DO     : 'do';
 IF     : 'if';
 ELSE   : 'else';
 WHILE  : 'while';

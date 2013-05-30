@@ -14,7 +14,7 @@ class TypeAtom
 {
 public:
   enum { Empty, Ellipsis, Int, Long, Char, Float, Double, Short, Struct, Union, Enum, 
-         Void, Function } primitive;
+         Void, Function, Bool } primitive;
   bool isUnsigned, isConst;
   int  stars;         // Levels of indirection
   int  array;         // Number of dimensions
