@@ -99,7 +99,6 @@ TypeAtom result;
         result.stars++;
         break;
       case COLON:
-        printf("colon\n");
         return result;      // Structure padding
 
       case DOUBLE:   result.primitive = TypeAtom::Double; break;

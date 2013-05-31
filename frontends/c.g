@@ -240,7 +240,7 @@ goop: ~(OPENBRA|CLOSEBRA|SEMI);
 statement : OPENBRA statement* CLOSEBRA
           | IF expr statement (ELSE statement)?
           -> ^(IF expr statement statement?)
-          | DO statement WHILE expr SEMI
+          | DO statement WHILE expr SEMI+
           -> ^(DO statement expr)
           | WHILE expr statement
           -> ^(WHILE expr statement)
@@ -248,9 +248,9 @@ statement : OPENBRA statement* CLOSEBRA
           -> ^(FOR expr statement)
           | SWITCH expr compoundStmt
           -> ^(SWITCH expr compoundStmt)
-          | declaration SEMI
+          | declaration SEMI+
           -> declaration
-          | goop+ SEMI
+          | goop+ SEMI+
           -> ^(STATEMENT goop+)
           | PREPRO
           ;
