@@ -20,6 +20,9 @@ SymbolTable *classify(TranslationU *context, Path const &where)
 {
 // Relative path when the preprocessor was invoked
 static Path prjRoot = Path("../gawk-4.0.2");
+// Special case; already preprocessed once on generation, #lines interspersed with second pass
+  if(where.repr()=="command.y" || where.repr()=="command.c")     
+    return context->table;
 //  printf("ctx %s where %s orig %s\n", context->path.c_str(), where.repr().c_str(), origName.c_str());
   if( where.inside(prjRoot) )
   {
@@ -34,13 +37,11 @@ static Path prjRoot = Path("../gawk-4.0.2");
 pair<string,char *> ppMap[] =
 {
   pair<string,char *>("../gawk-4.0.2/array.c", "testcases/pp-gawk/array.i"),
-  //pair<string,char *>("../gawk-4.0.2/builtin.c", "testcases/pp-gawk/builtin.i"),
-  //pair<string,char *>("../gawk-4.0.2/command.c", "testcases/pp-gawk/command.i"),
-  //pair<string,char *>("../gawk-4.0.2/debug.c", "testcases/pp-gawk/debug.i"),
-  //pair<string,char *>("../gawk-4.0.2/dfa.c", "testcases/pp-gawk/dfa.i"),
+  pair<string,char *>("../gawk-4.0.2/builtin.c", "testcases/pp-gawk/builtin.i"),
+  pair<string,char *>("../gawk-4.0.2/command.c", "testcases/pp-gawk/command.i"),
+  pair<string,char *>("../gawk-4.0.2/debug.c", "testcases/pp-gawk/debug.i"),
+  pair<string,char *>("../gawk-4.0.2/dfa.c", "testcases/pp-gawk/dfa.i"),
   pair<string,char *>("../gawk-4.0.2/eval.c", "testcases/pp-gawk/eval.i"),
-  //pair<string,char *>("../gawk-4.0.2/eval_d.c", "testcases/pp-gawk/eval_d.i"),
-  //pair<string,char *>("../gawk-4.0.2/eval_p.c", "testcases/pp-gawk/eval_p.i"),
   pair<string,char *>("../gawk-4.0.2/ext.c", "testcases/pp-gawk/ext.i")
 };
 
